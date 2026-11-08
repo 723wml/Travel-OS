@@ -1,0 +1,5107 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-device="desktop">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>TravelOS - Netlify Edition</title>
+<style>
+/* ==========================================
+   基础重置 & 全局变量
+   ========================================== */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  width: 100%; height: 100%;
+  font-family: system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+:root {
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --bg-glass: rgba(15, 23, 42, 0.85);
+  --border-color: #e2e8f0;
+  --text-main: #0f172a;
+  --text-sub: #64748b;
+}
+[data-device="desktop"] #mobile-shell { display: none; }
+[data-device="mobile"] #desktop-shell { display: none; }
+
+/* ==========================================
+   几何波浪壁纸 (模拟用户提供图片的玻璃质感)
+   ========================================== */
+.bg-wallpaper {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: #0f172a;
+  overflow: hidden;
+}
+
+/* 基础波浪层 */
+.wave-layer {
+  position: absolute;
+  width: 200%;
+  height: 200%;
+  top: -50%;
+  left: -50%;
+  background: linear-gradient(135deg, rgba(37,99,235,0.8) 0%, rgba(56,189,248,0.4) 50%, transparent 100%);
+  border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%;
+  animation: waveMove 20s linear infinite alternate;
+  filter: blur(20px);
+}
+
+.wave-layer-2 {
+  background: linear-gradient(225deg, rgba(30,58,138,0.9) 0%, rgba(14,165,233,0.5) 50%, transparent 100%);
+  border-radius: 60% 40% 30% 70% / 50% 60% 40% 50%;
+  animation: waveMove2 25s linear infinite alternate;
+  filter: blur(30px);
+}
+
+.wave-layer-3 {
+  background: radial-gradient(circle at 50% 50%, rgba(255,255,255,0.1) 0%, transparent 60%);
+  border-radius: 50%;
+  animation: pulseGlow 10s ease-in-out infinite;
+  mix-blend-mode: overlay;
+}
+
+@keyframes waveMove {
+  0% { transform: rotate(0deg) translate(0, 0) scale(1); }
+  100% { transform: rotate(10deg) translate(5%, 5%) scale(1.1); }
+}
+@keyframes waveMove2 {
+  0% { transform: rotate(0deg) translate(0, 0) scale(1); }
+  100% { transform: rotate(-15deg) translate(-5%, 10%) scale(1.2); }
+}
+@keyframes pulseGlow {
+  0%, 100% { transform: scale(1); opacity: 0.5; }
+  50% { transform: scale(1.2); opacity: 0.8; }
+}
+
+/* 玻璃反光质感覆盖 */
+.glass-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0) 40%, rgba(0,0,0,0.2) 100%);
+  pointer-events: none;
+}
+</style>
+</head>
+<body>
+
+<!-- 壁纸层 -->
+<div class="bg-wallpaper">
+  <div class="wave-layer"></div>
+  <div class="wave-layer wave-layer-2"></div>
+  <div class="wave-layer wave-layer-3"></div>
+  <div class="glass-overlay"></div>
+</div>
+<style>
+/* ==========================================
+   桌面端布局 (Desktop Shell)
+   ========================================== */
+.desktop-shell {
+  position: relative;
+  width: 100%; height: 100%;
+}
+.desktop-icons {
+  position: absolute;
+  top: 30px; left: 30px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 96px);
+  gap: 16px;
+  align-content: start;
+  max-height: calc(100% - 120px);
+  overflow: auto;
+  padding: 10px;
+}
+.desktop-icon {
+  width: 96px;
+  padding: 12px 6px;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+  position: relative;
+}
+.desktop-icon:hover { background: rgba(255, 255, 255, 0.15); backdrop-filter: blur(10px); }
+.desktop-icon:active { transform: scale(0.95); }
+.desktop-icon .app-icon { font-size: 0; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3)); }
+.desktop-icon .app-icon svg { width: 48px; height: 48px; }
+.desktop-icon .label {
+  font-size: 13px; text-align: center; line-height: 1.2;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+  word-break: break-all;
+  font-weight: 500;
+}
+
+/* 任务栏 */
+.taskbar {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  background: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(20px);
+  border-top: 1px solid rgba(255,255,255,0.1);
+  color: #fff;
+  z-index: 9000;
+}
+.start-btn {
+  width: 40px; height: 40px;
+  border: none; border-radius: 10px;
+  background: transparent; color: #fff;
+  cursor: pointer;
+  display: grid; place-items: center;
+  transition: background 0.2s;
+}
+.start-btn:hover { background: rgba(255, 255, 255, 0.2); }
+.taskbar-apps {
+  flex: 1; display: flex; gap: 8px; overflow: hidden;
+}
+.taskbar-app {
+  height: 38px; padding: 0 14px;
+  border: none; border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff; cursor: pointer;
+  display: flex; align-items: center; gap: 8px;
+  font-size: 13px;
+  transition: background 0.2s;
+  max-width: 180px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.taskbar-app:hover { background: rgba(255, 255, 255, 0.25); }
+.tray {
+  display: flex; align-items: center; gap: 12px;
+  font-size: 13px; padding-right: 8px;
+}
+
+/* 开始菜单 */
+.start-menu {
+  position: absolute;
+  left: 12px; bottom: 64px;
+  width: 360px; max-height: 520px;
+  overflow-y: auto;
+  background: rgba(15, 23, 42, 0.9);
+  backdrop-filter: blur(30px);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 16px;
+  padding: 16px;
+  display: none;
+  color: #fff;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+  z-index: 9500;
+  animation: slideUp 0.2s ease-out;
+}
+@keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+.start-menu.open { display: block; }
+.start-menu h4 { margin-bottom: 12px; font-size: 13px; color: #94a3b8; font-weight: 500; }
+.start-menu-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.start-menu-item {
+  padding: 12px 8px; border-radius: 10px;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  font-size: 12px; cursor: pointer; transition: background 0.15s;
+}
+.start-menu-item:hover { background: rgba(255, 255, 255, 0.15); }
+.start-menu-item svg { width: 28px; height: 28px; }
+
+/* ==========================================
+   手机端布局 (Mobile Shell)
+   ========================================== */
+.mobile-shell {
+  position: relative;
+  width: 100%; height: 100dvh;
+  color: #fff;
+  overflow: hidden;
+}
+.status-bar {
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 48px;
+  padding: 0 24px;
+  padding-top: env(safe-area-inset-top);
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 14px; font-weight: 500;
+  z-index: 10;
+}
+.mobile-desk {
+  position: absolute; inset: 48px 0 0 0;
+  display: flex; flex-direction: column;
+  padding: 16px 20px 24px;
+  overflow: auto;
+}
+.mobile-icons {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 20px 12px;
+  align-content: start;
+}
+.mobile-icon {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  cursor: pointer; transition: transform 0.1s;
+}
+.mobile-icon:active { transform: scale(0.9); }
+.mobile-icon .app-icon svg { width: 52px; height: 52px; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.2)); }
+.mobile-icon .label { font-size: 12px; text-align: center; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
+.mobile-dock {
+  height: 88px; border-radius: 28px;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(25px);
+  border: 1px solid rgba(255,255,255,0.1);
+  display: flex; justify-content: space-around; align-items: center;
+  padding: 0 12px;
+  margin-top: auto;
+  margin-bottom: env(safe-area-inset-bottom);
+}
+.mobile-dock .mobile-icon { width: 68px; }
+.mobile-dock .mobile-icon .app-icon svg { width: 42px; height: 42px; }
+
+/* ==========================================
+   启动动画 (App Launching Animation)
+   ========================================== */
+.launch-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 999999;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: rgba(0,0,0,0.4);
+  backdrop-filter: blur(8px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+}
+.launch-overlay.active { opacity: 1; pointer-events: auto; }
+
+.launch-container {
+  position: relative;
+  width: 120px; height: 120px;
+  display: flex; justify-content: center; align-items: center;
+}
+.launch-icon-wrap {
+  width: 70px; height: 70px;
+  display: flex; justify-content: center; align-items: center;
+  background: #fff;
+  border-radius: 20px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+  z-index: 2;
+  animation: iconFloat 1.5s ease-in-out infinite alternate;
+}
+@keyframes iconFloat {
+  0% { transform: translateY(0) scale(1); }
+  100% { transform: translateY(-5px) scale(1.05); }
+}
+.launch-icon-wrap svg { width: 44px; height: 44px; }
+
+.launch-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 4px solid transparent;
+  z-index: 1;
+}
+.launch-ring::before, .launch-ring::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 4px solid transparent;
+}
+.launch-ring::before {
+  border-top-color: #fff;
+  border-right-color: rgba(255,255,255,0.5);
+  animation: spin 1s linear infinite;
+}
+.launch-ring::after {
+  border-bottom-color: rgba(255,255,255,0.2);
+  border-left-color: rgba(255,255,255,0.2);
+  animation: spin 2s linear infinite reverse;
+}
+@keyframes spin { 100% { transform: rotate(360deg); } }
+
+/* 画圈结束后的爆发效果 */
+.launch-overlay.explode .launch-ring { display: none; }
+.launch-overlay.explode .launch-icon-wrap {
+  animation: expandPage 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+@keyframes expandPage {
+  0% { transform: scale(1); border-radius: 20px; opacity: 1; }
+  100% { transform: scale(50); border-radius: 0; opacity: 0; }
+}
+
+/* 窗口外层容器（由动画结束后显现） */
+.window-layer {
+  position: absolute;
+  inset: 0 0 52px 0;
+  pointer-events: none;
+}
+.os-window {
+  position: absolute;
+  pointer-events: auto;
+  background: #fff;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 30px 80px rgba(0,0,0,0.4);
+  display: flex; flex-direction: column;
+  min-width: 360px; min-height: 300px;
+  opacity: 0;
+  transform: scale(0.95);
+  transition: opacity 0.3s, transform 0.3s;
+}
+.os-window.visible { opacity: 1; transform: scale(1); }
+
+/* 手机页面栈 */
+.page-stack {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 100;
+}
+.page-stack > * { pointer-events: auto; }
+.mobile-page {
+  position: absolute;
+  inset: 0;
+  background: #f8fafc;
+  color: #0f172a;
+  transform: translateX(100%);
+  transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  display: flex; flex-direction: column;
+  z-index: 101;
+}
+.mobile-page.active { transform: translateX(0); }
+</style>
+<style>
+/* ==========================================
+   App 通用组件 (Universal App UI)
+   ========================================== */
+.app {
+  padding: 20px;
+  height: 100%;
+  overflow-y: auto;
+  background: #f8fafc;
+  color: var(--text-main);
+}
+.app h2 {
+  font-size: 18px; font-weight: 700;
+  margin-bottom: 16px;
+  color: var(--text-main);
+  display: flex; align-items: center; gap: 8px;
+}
+.app h3 {
+  font-size: 15px; font-weight: 600;
+  margin: 20px 0 10px;
+  color: #334155;
+}
+
+/* 表单 */
+.field { margin-bottom: 14px; }
+.field label {
+  display: block; font-size: 13px;
+  color: var(--text-sub); margin-bottom: 6px; font-weight: 500;
+}
+.field input, .field select {
+  width: 100%; height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  font-size: 14px; background: #fff;
+  color: var(--text-main); outline: none;
+  transition: border-color 0.2s;
+}
+.field input:focus, .field select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+}
+
+/* 按钮 */
+.btn {
+  height: 44px; padding: 0 20px;
+  border: none; border-radius: 10px;
+  background: var(--primary); color: #fff;
+  font-size: 15px; font-weight: 600;
+  cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  transition: background 0.2s, transform 0.1s;
+}
+.btn:hover { background: var(--primary-hover); }
+.btn:active { transform: scale(0.97); }
+.btn.secondary { background: #e2e8f0; color: var(--text-main); }
+.btn.secondary:hover { background: #cbd5e1; }
+.btn.danger { background: #ef4444; }
+.btn.danger:hover { background: #dc2626; }
+.btn.block { width: 100%; }
+.btn.small { height: 34px; padding: 0 14px; font-size: 13px; }
+.btn-row { display: flex; gap: 10px; }
+.btn-row .btn { flex: 1; }
+
+/* 卡片 */
+.card {
+  background: #fff;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.card.clickable { cursor: pointer; }
+.card.clickable:hover {
+  border-color: var(--primary);
+  box-shadow: 0 4px 12px rgba(37,99,235,0.08);
+}
+.card.selected {
+  border-color: var(--primary);
+  background: #eff6ff;
+}
+.card-title {
+  font-weight: 600; font-size: 15px;
+  color: var(--text-main); margin-bottom: 8px;
+  display: flex; justify-content: space-between; align-items: center; gap: 8px;
+}
+.card-sub { font-size: 13px; color: var(--text-sub); line-height: 1.6; }
+
+/* 行 / 标签 / 价格 */
+.row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; font-size: 14px; color: #334155; gap: 10px; }
+.row .muted { color: #94a3b8; font-size: 13px; }
+.price { color: #dc2626; font-weight: 700; font-size: 16px; }
+.divider { height: 1px; background: var(--border-color); margin: 12px 0; }
+.tag {
+  display: inline-block; padding: 4px 10px; border-radius: 999px;
+  font-size: 12px; font-weight: 500; background: #dbeafe; color: #1d4ed8;
+}
+.tag.gray { background: #f1f5f9; color: #475569; }
+.tag.green { background: #dcfce7; color: #15803d; }
+.tag.red { background: #fee2e2; color: #b91c1c; }
+
+/* 空状态 */
+.empty {
+  text-align: center; padding: 60px 20px;
+  color: #94a3b8; font-size: 14px; line-height: 1.8;
+}
+.empty svg { margin-bottom: 12px; opacity: 0.5; }
+
+/* 头部栏 */
+.header-bar {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 16px;
+}
+.header-bar .title { font-weight: 700; font-size: 16px; color: var(--text-main); }
+.header-bar .sub { font-size: 13px; color: var(--text-sub); margin-top: 2px; }
+
+/* ==========================================
+   钱包卡包组件 (Wallet Cards)
+   ========================================== */
+.bank-card {
+  position: relative;
+  width: 100%; height: 180px;
+  border-radius: 16px;
+  padding: 20px;
+  color: #fff;
+  display: flex; flex-direction: column; justify-content: space-between;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+  overflow: hidden;
+  margin-bottom: 14px;
+}
+/* 银行卡背景渐变 */
+.bank-card.bg-0 { background: linear-gradient(135deg, #1e3a8a, #2563eb); }
+.bank-card.bg-1 { background: linear-gradient(135deg, #4c1d95, #7c3aed); }
+.bank-card.bg-2 { background: linear-gradient(135deg, #064e3b, #059669); }
+.bank-card.bg-3 { background: linear-gradient(135deg, #7f1d1d, #dc2626); }
+.bank-card.bg-4 { background: linear-gradient(135deg, #0f172a, #475569); }
+
+.bank-card::after {
+  content: ''; position: absolute;
+  top: -50%; right: -20%;
+  width: 200px; height: 200px;
+  background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 70%);
+  border-radius: 50%;
+}
+.bank-card-top { display: flex; justify-content: space-between; align-items: flex-start; z-index: 1; }
+.bank-card-bank { font-size: 16px; font-weight: 700; letter-spacing: 1px; }
+.bank-card-network { font-size: 12px; font-weight: 800; font-style: italic; opacity: 0.8; text-transform: uppercase; }
+.bank-card-chip {
+  width: 36px; height: 26px;
+  background: linear-gradient(135deg, #fbbf24, #d97706);
+  border-radius: 6px; position: relative; margin-top: 10px;
+}
+.bank-card-chip::before {
+  content: ''; position: absolute; inset: 2px;
+  border: 1px solid rgba(0,0,0,0.2); border-radius: 4px;
+}
+.bank-card-number {
+  font-size: 20px; font-weight: 600; letter-spacing: 2px;
+  font-family: monospace; z-index: 1;
+}
+.bank-card-bottom { display: flex; justify-content: space-between; align-items: flex-end; z-index: 1; }
+.bank-card-bottom .label { font-size: 10px; opacity: 0.7; text-transform: uppercase; margin-bottom: 2px; }
+.bank-card-bottom .value { font-size: 14px; font-weight: 500; }
+
+/* 卡包列表项 (用于点进去查看/编辑) */
+.bank-card-item {
+  background: #fff; border: 1px solid var(--border-color);
+  border-radius: 12px; padding: 16px; margin-bottom: 10px;
+  display: flex; justify-content: space-between; align-items: center;
+  cursor: pointer; transition: border-color 0.2s;
+}
+.bank-card-item:hover { border-color: var(--primary); }
+.bank-card-item-left { display: flex; align-items: center; gap: 12px; }
+.bank-card-icon {
+  width: 44px; height: 44px; border-radius: 10px;
+  background: #eff6ff; color: var(--primary);
+  display: grid; place-items: center;
+}
+.bank-card-item-title { font-weight: 600; font-size: 15px; color: var(--text-main); }
+.bank-card-item-sub { font-size: 12px; color: var(--text-sub); margin-top: 4px; }
+
+/* ==========================================
+   Toast 提示
+   ========================================== */
+.toast-layer {
+  position: fixed;
+  right: 20px; bottom: 80px;
+  z-index: 999998;
+  display: flex; flex-direction: column; gap: 10px;
+  align-items: flex-end;
+  pointer-events: none;
+}
+.toast {
+  background: rgba(15, 23, 42, 0.95);
+  color: #fff;
+  padding: 14px 20px;
+  border-radius: 12px;
+  font-size: 14px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+  animation: toastIn 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  max-width: 300px;
+  display: flex; align-items: center; gap: 8px;
+}
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(20px) scale(0.9); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+[data-device="mobile"] .toast-layer {
+  left: 16px; right: 16px; bottom: auto; top: 60px; align-items: stretch;
+}
+[data-device="mobile"] .toast { max-width: none; }
+
+/* ==========================================
+   模态框 (Modal)
+   ========================================== */
+.modal-mask {
+  position: fixed; inset: 0;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 999999;
+  display: grid; place-items: center;
+  padding: 20px;
+  animation: fadeIn 0.2s;
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.modal-box {
+  background: #fff; border-radius: 16px;
+  padding: 24px; width: 100%; max-width: 440px;
+  max-height: 85vh; overflow-y: auto;
+  color: var(--text-main);
+  box-shadow: 0 25px 50px rgba(0,0,0,0.3);
+  animation: modalIn 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@keyframes modalIn {
+  from { opacity: 0; transform: scale(0.95) translateY(20px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.modal-box h3 {
+  margin: 0 0 20px; font-size: 18px; font-weight: 700;
+  color: var(--text-main);
+}
+
+/* 城市选择器 */
+.city-picker { position: relative; }
+.city-picker-input {
+  width: 100%; height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  font-size: 14px; background: #fff; color: var(--text-main);
+  outline: none; cursor: pointer;
+  transition: border-color 0.2s;
+}
+.city-picker-input:focus { border-color: var(--primary); }
+.city-picker-panel {
+  position: absolute; top: 100%; left: 0; right: 0;
+  z-index: 100; background: #fff;
+  border: 1px solid var(--border-color);
+  border-radius: 10px; margin-top: 6px;
+  max-height: 320px; overflow-y: auto;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+}
+.city-picker-search {
+  width: 100%; height: 40px;
+  padding: 0 14px; border: none;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 14px; outline: none;
+  position: sticky; top: 0; background: #fff; z-index: 2;
+}
+.city-picker-group {
+  padding: 8px 14px; font-size: 12px;
+  color: #94a3b8; background: #f8fafc;
+  position: sticky; top: 40px; z-index: 1;
+}
+.city-picker-item {
+  padding: 10px 14px; font-size: 14px;
+  cursor: pointer; color: var(--text-main);
+  transition: background 0.15s;
+}
+.city-picker-item:hover { background: #eff6ff; color: var(--primary); }
+</style>
+</head>
+<body>
+<svg id="icon-sprite" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true"></svg>
+
+<!-- 桌面端外壳 -->
+<div id="desktop-shell" class="desktop-shell">
+  <!-- 桌面图标网格 -->
+  <div class="desktop-icons" id="desktop-icons"></div>
+  
+  <!-- 窗口层（App 容器） -->
+  <div class="window-layer" id="window-layer"></div>
+  
+  <!-- 开始菜单 -->
+  <div class="start-menu" id="start-menu"></div>
+  
+  <!-- 任务栏 -->
+  <div class="taskbar" id="taskbar">
+    <button class="start-btn" id="start-btn"></button>
+    <div class="taskbar-apps" id="taskbar-apps"></div>
+    <div class="tray" id="tray"></div>
+  </div>
+</div>
+
+<!-- 手机端外壳 -->
+<div id="mobile-shell" class="mobile-shell">
+  <div class="status-bar">
+    <span id="mobile-time">--:--</span>
+    <span class="status-icons" id="mobile-status-icons"></span>
+  </div>
+  <div class="mobile-desk">
+    <div class="mobile-icons" id="mobile-icons"></div>
+    <div class="mobile-dock" id="mobile-dock"></div>
+  </div>
+  <div class="page-stack" id="page-stack"></div>
+</div>
+
+<!-- App 启动画圈动画层 -->
+<div id="launch-overlay" class="launch-overlay">
+  <div class="launch-container">
+    <div class="launch-ring"></div>
+    <div class="launch-icon-wrap" id="launch-icon-wrap"></div>
+  </div>
+</div>
+
+<!-- 全局 Toast -->
+<div id="toast-layer" class="toast-layer"></div>
+
+<!-- 设备切换按钮（演示用） -->
+<button id="device-toggle" class="device-toggle" style="position:fixed;right:20px;bottom:80px;width:48px;height:48px;border-radius:50%;border:none;background:rgba(15,23,42,0.85);color:#fff;cursor:pointer;display:grid;place-items:center;z-index:99999;box-shadow:0 4px 16px rgba(0,0,0,0.3);backdrop-filter:blur(10px);"></button>
+
+<script>
+/* ==========================================================================
+   1. 图标库 (SVG Icon Sprite)
+   包含 App 图标、系统图标、操作图标，全部采用 24x24 viewBox
+   ========================================================================== */
+const ICONS = {
+  // --- 交通与出行 ---
+  'train-front': '<path d="M8 3.1V7a4 4 0 0 0 8 0V3.1"/><path d="m9 15-1-1"/><path d="m15 15 1-1"/><path d="M9 19c-2.8 0-5-2.2-5-5v-4a8 8 0 0 1 16 0v4c0 2.8-2.2 5-5 5Z"/><path d="m8 19-2 3"/><path d="m16 19 2 3"/>',
+  'plane': '<path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/>',
+  'hotel': '<path d="M10 22v-6.57"/><path d="M12 11h.01"/><path d="M12 7h.01"/><path d="M14 15.43V22"/><path d="M15 16a5 5 0 0 0-6 0"/><path d="M16 11h.01"/><path d="M16 7h.01"/><path d="M8 11h.01"/><path d="M8 7h.01"/><rect x="4" y="2" width="16" height="20" rx="2"/>',
+  'ticket': '<path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M13 5v2"/><path d="M13 17v2"/><path d="M13 11v2"/>',
+  'music': '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>',
+  
+  // --- 系统与工具 ---
+  'clipboard-list': '<rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/>',
+  'wallet': '<path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/>',
+  'message-circle': '<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>',
+  'user': '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+  'user-plus': '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" x2="19" y1="8" y2="14"/><line x1="22" x2="16" y1="11" y2="11"/>',
+  'map': '<path d="M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z"/><path d="M15 5.764v15"/><path d="M9 3.236v15"/>',
+  'map-pin': '<path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/>',
+  'calendar': '<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/>',
+  'notebook-pen': '<path d="M13.4 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7.4"/><path d="M2 6h4"/><path d="M2 10h4"/><path d="M2 14h4"/><path d="M2 18h4"/><path d="M21.378 5.626a1 1 0 1 0-3.004-3.004l-5.01 5.012a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506z"/>',
+  'settings': '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
+  
+  // --- UI 交互 ---
+  'monitor': '<rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/>',
+  'smartphone': '<rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/>',
+  'wifi': '<path d="M12 20h.01"/><path d="M2 8.82a15 15 0 0 1 20 0"/><path d="M5 12.859a10 10 0 0 1 14 0"/><path d="M8.5 16.429a5 5 0 0 1 7 0"/>',
+  'battery-full': '<rect width="16" height="10" x="2" y="7" rx="2" ry="2"/><line x1="22" x2="22" y1="11" y2="13"/><line x1="6" x2="6" y1="11" y2="13"/><line x1="10" x2="10" y1="11" y2="13"/><line x1="14" x2="14" y1="11" y2="13"/>',
+  'minus': '<path d="M5 12h14"/>',
+  'square': '<rect width="18" height="18" x="3" y="3" rx="2"/>',
+  'x': '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+  'search': '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+  'arrow-left': '<path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>',
+  'chevron-right': '<path d="m9 18 6-6-6-6"/>',
+  'check': '<path d="M20 6 9 17l-5-5"/>',
+  'plus': '<path d="M5 12h14"/><path d="M12 5v14"/>',
+  'trash-2': '<path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/>',
+  'pencil': '<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/>',
+  'clock': '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+  'globe': '<circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>',
+  'sticky-note': '<path d="M16 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8Z"/><path d="M15 3v4a2 2 0 0 0 2 2h4"/>',
+  'star': '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>',
+  'banknote': '<rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/>',
+  'credit-card': '<rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/>',
+  'grid': '<rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/>',
+  'cloud': '<path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>',
+  'refresh-cw': '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>'
+};
+
+/* 将 SVG Path 注入到页面中 */
+function injectIconSprite() {
+  const sprite = document.getElementById('icon-sprite');
+  if (!sprite) return;
+  sprite.innerHTML = Object.entries(ICONS).map(([name, paths]) => 
+    `<symbol id="icon-${name}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${paths}</symbol>`
+  ).join('');
+}
+
+/* 生成图标 HTML 字符串的小工具 */
+function icon(name, size = 24, cls = '') {
+  return `<svg class="icon ${cls}" width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-${name}"></use></svg>`;
+}
+
+/* ==========================================================================
+   2. 设备识别 & 全局状态
+   ========================================================================== */
+(function initDevice() {
+  const KEY = 'travelos:device_mode';
+  function detect() {
+    const ua = navigator.userAgent;
+    const hasTouch = navigator.maxTouchPoints > 0 || 'ontouchstart' in window;
+    const shortSide = Math.min(screen.width, screen.height);
+    const isIPadOS = /Macintosh/.test(ua) && hasTouch;
+    const isMobileUA = /Android|iPhone|iPad|iPod|Mobile|HarmonyOS/i.test(ua);
+    
+    if (isMobileUA || isIPadOS) return 'mobile';
+    if (hasTouch && shortSide < 820) return 'mobile';
+    return 'desktop';
+  }
+  
+  const saved = localStorage.getItem(KEY);
+  const mode = saved || detect();
+  document.documentElement.dataset.device = mode;
+  
+  window.Device = {
+    mode,
+    set(newMode) {
+      localStorage.setItem(KEY, newMode);
+      document.documentElement.dataset.device = newMode;
+      this.mode = newMode;
+      window.dispatchEvent(new CustomEvent('devicechange', { detail: newMode }));
+    },
+    toggle() {
+      this.set(this.mode === 'mobile' ? 'desktop' : 'mobile');
+    }
+  };
+})();
+
+/* ==========================================================================
+   3. 本地存储 (LocalStorage 封装)
+   ========================================================================== */
+window.Store = {
+  ns: 'travelos:',
+  get(key, fallback = null) {
+    try {
+      const v = localStorage.getItem(this.ns + key);
+      if (v === null) return fallback;
+      return JSON.parse(v);
+    } catch (e) {
+      console.warn('Store.get error:', e);
+      return fallback;
+    }
+  },
+  set(key, value) {
+    try {
+      localStorage.setItem(this.ns + key, JSON.stringify(value));
+    } catch (e) {
+      console.warn('Store.set error:', e);
+    }
+  },
+  remove(key) {
+    localStorage.removeItem(this.ns + key);
+  },
+  clearAll() {
+    const keys = ['orders', 'messages', 'balance', 'passengers', 'notes', 'profile', 'cards', 'sync_code'];
+    keys.forEach(k => this.remove(k));
+  }
+};
+</script>
+<script>
+/* ==========================================================================
+   4. 云端同步引擎 (Netlify Blobs 接口封装)
+   用于跨设备同步订单、钱包、银行卡等数据。基于 Netlify Functions。
+   ========================================================================== */
+window.SyncEngine = {
+  // Netlify Functions 接口路径
+  apiEndpoint: '/.netlify/functions/sync',
+  
+  // 获取本地存储的同步码
+  getSyncCode() {
+    return Store.get('sync_code', '');
+  },
+  
+  // 设置并保存同步码
+  setSyncCode(code) {
+    if (!code || !/^[A-Za-z0-9]{4,20}$/.test(code)) {
+      throw new Error('同步码必须是 4-20 位字母或数字');
+    }
+    Store.set('sync_code', code);
+    return true;
+  },
+  
+  // 清除同步码
+  clearSyncCode() {
+    Store.remove('sync_code');
+  },
+
+  // 打包当前所有需要同步的数据
+  packData() {
+    return {
+      orders: Store.get('orders', []),
+      messages: Store.get('messages', []),
+      balance: Store.get('balance', 5000),
+      cards: Store.get('cards', []),
+      passengers: Store.get('passengers', []),
+      profile: Store.get('profile', { nickname: '旅行者', phone: '13800138000' }),
+      updatedAt: Date.now()
+    };
+  },
+
+  // 解包云端数据到本地存储
+  unpackData(data) {
+    if (!data) return false;
+    if (data.orders !== undefined) Store.set('orders', data.orders);
+    if (data.messages !== undefined) Store.set('messages', data.messages);
+    if (data.balance !== undefined) Store.set('balance', data.balance);
+    if (data.cards !== undefined) Store.set('cards', data.cards);
+    if (data.passengers !== undefined) Store.set('passengers', data.passengers);
+    if (data.profile !== undefined) Store.set('profile', data.profile);
+    return true;
+  },
+
+  // 推送到云端
+  async pushToCloud() {
+    const code = this.getSyncCode();
+    if (!code) throw new Error('未设置同步码');
+    
+    const payload = this.packData();
+    
+    try {
+      const res = await fetch(`${this.apiEndpoint}?action=push&code=${encodeURIComponent(code)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || '网络请求失败');
+      }
+      
+      return await res.json();
+    } catch (e) {
+      console.error('[SyncEngine] Push failed:', e);
+      throw new Error(`同步失败: ${e.message}`);
+    }
+  },
+
+  // 从云端拉取
+  async pullFromCloud(overrideCode = null) {
+    const code = overrideCode || this.getSyncCode();
+    if (!code) throw new Error('未设置同步码');
+    
+    try {
+      const res = await fetch(`${this.apiEndpoint}?action=pull&code=${encodeURIComponent(code)}`);
+      
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || '网络请求失败');
+      }
+      
+      const data = await res.json();
+      
+      if (!data || Object.keys(data).length === 0) {
+        throw new Error('云端暂无数据');
+      }
+      
+      this.unpackData(data);
+      
+      if (overrideCode) {
+        this.setSyncCode(overrideCode);
+      }
+      
+      return data;
+    } catch (e) {
+      console.error('[SyncEngine] Pull failed:', e);
+      throw new Error(`拉取失败: ${e.message}`);
+    }
+  },
+
+  // 静默同步（用于后台自动保存）
+  async autoSync() {
+    const code = this.getSyncCode();
+    if (!code) return; // 没设置同步码就不自动同步
+    try {
+      await this.pushToCloud();
+      console.log('[SyncEngine] Auto-sync completed');
+    } catch (e) {
+      console.warn('[SyncEngine] Auto-sync failed silently:', e.message);
+    }
+  }
+};
+
+// 提供全局快捷方法，方便各个 App 在修改数据后调用
+window.maybeAutoSync = function() {
+  // 使用 setTimeout 防抖，避免频繁请求
+  if (window.__syncTimer) clearTimeout(window.__syncTimer);
+  window.__syncTimer = setTimeout(() => {
+    SyncEngine.autoSync();
+  }, 2000); // 数据变更后 2 秒推送到云端
+};
+
+
+/* ==========================================================================
+   5. 窗口管理器 (WindowManager) - 包含电脑端 App 启动动画
+   ========================================================================== */
+class WindowManager {
+  constructor(layerElement, launchOverlayElement) {
+    this.layer = layerElement;
+    this.launchOverlay = launchOverlayElement;
+    this.zIndexCounter = 100;
+    this.windows = new Map();
+    this.onStateChange = null;
+    this.isAnimating = false;
+  }
+
+  // 触发启动动画，动画结束后再真正创建窗口
+  triggerLaunchAnimation(app, callback) {
+    if (!this.launchOverlay || this.isAnimating) {
+      callback();
+      return;
+    }
+    
+    this.isAnimating = true;
+    const iconWrap = document.getElementById('launch-icon-wrap');
+    
+    // 1. 设置图标颜色
+    iconWrap.innerHTML = `<span style="color:${app.color}">${icon(app.icon, 44)}</span>`;
+    
+    // 2. 显示遮罩层并播动画
+    this.launchOverlay.classList.remove('explode');
+    this.launchOverlay.classList.add('active');
+    
+    // 3. 等待 1.2 秒（画圈动画），然后触发爆发效果
+    setTimeout(() => {
+      this.launchOverlay.classList.add('explode');
+      
+      // 4. 动画扩散的同时，在背景创建窗口（此时窗口是 opacity:0 的）
+      callback();
+      
+      // 5. 等待扩散动画结束，清理状态
+      setTimeout(() => {
+        this.launchOverlay.classList.remove('active', 'explode');
+        iconWrap.innerHTML = '';
+        this.isAnimating = false;
+        
+        // 6. 显示刚创建的窗口
+        const winData = this.windows.get(app.id);
+        if (winData && winData.el) {
+          winData.el.classList.add('visible');
+        }
+      }, 400); // 与 CSS 中的 expandPage 动画时长一致
+    }, 1200);
+  }
+
+  // 打开 App 窗口
+  open(app) {
+    // 如果窗口已存在，直接聚焦
+    if (this.windows.has(app.id)) {
+      this.focus(app.id);
+      return;
+    }
+
+    // 触发启动动画，动画结束后再执行真正的渲染
+    this.triggerLaunchAnimation(app, () => {
+      this._createWindowDOM(app);
+    });
+  }
+
+  // 内部方法：创建窗口 DOM 结构
+  _createWindowDOM(app) {
+    const win = document.createElement('div');
+    win.className = 'os-window';
+    win.dataset.appId = app.id;
+    
+    // 初始位置：居中偏左上
+    const w = 960, h = 640;
+    const left = Math.max(20, (window.innerWidth - w) / 2 + (Math.random() * 40 - 20));
+    const top = Math.max(20, (window.innerHeight - h) / 2 + (Math.random() * 40 - 20));
+    
+    win.style.left = `${left}px`;
+    win.style.top = `${top}px`;
+    win.style.width = `${w}px`;
+    win.style.height = `${h}px`;
+
+    // 标题栏
+    const titlebar = document.createElement('div');
+    titlebar.className = 'window-titlebar';
+    titlebar.innerHTML = `
+      <span style="color:${app.color};display:flex;align-items:center;">${icon(app.icon, 18)}</span>
+      <span class="title" style="margin-left:8px;">${app.title}</span>
+      <div class="window-controls">
+        <button data-act="min" title="最小化">${icon('minus', 16)}</button>
+        <button data-act="max" title="最大化">${icon('square', 14)}</button>
+        <button data-act="close" title="关闭">${icon('x', 16)}</button>
+      </div>
+    `;
+
+    // 内容区
+    const body = document.createElement('div');
+    body.className = 'window-body';
+    // 渲染 App 内容
+    try {
+      const content = app.render();
+      body.appendChild(content);
+    } catch (e) {
+      body.innerHTML = `<div style="padding:20px;color:red;">App 渲染出错: ${e.message}</div>`;
+      console.error(e);
+    }
+
+    win.appendChild(titlebar);
+    win.appendChild(body);
+    this.layer.appendChild(win);
+
+    this.windows.set(app.id, { el: win, app, body });
+    this.focus(app.id);
+    this.bindDrag(win);
+    this.bindControls(win, app.id);
+    this.notifyStateChange();
+  }
+
+  // 聚焦窗口（置顶）
+  focus(id) {
+    const winData = this.windows.get(id);
+    if (!winData) return;
+    
+    winData.el.style.zIndex = ++this.zIndexCounter;
+    winData.el.classList.remove('minimized');
+    this.notifyStateChange();
+  }
+
+  // 关闭窗口
+  close(id) {
+    const winData = this.windows.get(id);
+    if (!winData) return;
+    
+    // 添加关闭动画
+    winData.el.style.transform = 'scale(0.9)';
+    winData.el.style.opacity = '0';
+    
+    setTimeout(() => {
+      winData.el.remove();
+      this.windows.delete(id);
+      this.notifyStateChange();
+    }, 200);
+  }
+
+  // 最小化
+  minimize(id) {
+    const winData = this.windows.get(id);
+    if (!winData) return;
+    winData.el.classList.add('minimized');
+    this.notifyStateChange();
+  }
+
+  // 刷新窗口内容（当 App 内部状态改变时调用）
+  refresh(id) {
+    const winData = this.windows.get(id);
+    if (!winData) return;
+    
+    const scrollTop = winData.body.scrollTop;
+    winData.body.innerHTML = '';
+    try {
+      const content = winData.app.render();
+      winData.body.appendChild(content);
+    } catch (e) {
+      winData.body.innerHTML = `<div style="padding:20px;color:red;">刷新出错: ${e.message}</div>`;
+    }
+    winData.body.scrollTop = scrollTop;
+  }
+
+  notifyStateChange() {
+    if (this.onStateChange) this.onStateChange();
+  }
+
+  // 拖拽逻辑
+  bindDrag(win) {
+    const bar = win.querySelector('.window-titlebar');
+    let startX = 0, startY = 0, initialLeft = 0, initialTop = 0, isDragging = false;
+
+    const onStart = (e) => {
+      if (e.target.closest('.window-controls')) return; // 点击按钮不触发拖拽
+      if (win.classList.contains('maximized')) return; // 最大化时不允许拖拽
+      
+      isDragging = true;
+      const p = e.touches ? e.touches[0] : e;
+      startX = p.clientX;
+      startY = p.clientY;
+      initialLeft = win.offsetLeft;
+      initialTop = win.offsetTop;
+      
+      this.focus(win.dataset.appId);
+      win.style.transition = 'none'; // 拖拽时禁用过渡动画
+    };
+
+    const onMove = (e) => {
+      if (!isDragging) return;
+      const p = e.touches ? e.touches[0] : e;
+      
+      let newLeft = initialLeft + (p.clientX - startX);
+      let newTop = initialTop + (p.clientY - startY);
+      
+      // 边界限制（防止拖出屏幕顶部或左侧太远）
+      newLeft = Math.max(-win.offsetWidth + 100, Math.min(window.innerWidth - 100, newLeft));
+      newTop = Math.max(0, Math.min(window.innerHeight - 100, newTop));
+      
+      win.style.left = `${newLeft}px`;
+      win.style.top = `${newTop}px`;
+    };
+
+    const onEnd = () => {
+      if (isDragging) {
+        isDragging = false;
+        win.style.transition = 'opacity 0.3s, transform 0.3s'; // 恢复过渡
+      }
+    };
+
+    bar.addEventListener('mousedown', onStart);
+    bar.addEventListener('touchstart', onStart, { passive: true });
+    
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('touchmove', onMove, { passive: false });
+    
+    document.addEventListener('mouseup', onEnd);
+    document.addEventListener('touchend', onEnd);
+  }
+
+  // 窗口按钮控制
+  bindControls(win, id) {
+    win.querySelectorAll('[data-act]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const act = btn.dataset.act;
+        
+        if (act === 'close') {
+          this.close(id);
+        } else if (act === 'min') {
+          this.minimize(id);
+        } else if (act === 'max') {
+          win.classList.toggle('maximized');
+          if (win.classList.contains('maximized')) {
+            win.dataset.oldStyle = JSON.stringify({
+              left: win.style.left, top: win.style.top,
+              width: win.style.width, height: win.style.height
+            });
+            win.style.left = '0';
+            win.style.top = '0';
+            win.style.width = '100%';
+            win.style.height = 'calc(100% - 52px)'; // 减去任务栏高度
+          } else {
+            const old = JSON.parse(win.dataset.oldStyle || '{}');
+            win.style.left = old.left || '100px';
+            win.style.top = old.top || '100px';
+            win.style.width = old.width || '960px';
+            win.style.height = old.height || '640px';
+          }
+        }
+      });
+    });
+  }
+}
+</script>
+<script>
+/* ==========================================================================
+   6. 手机端页面栈管理器 (PageStack)
+   模拟手机 App 的全屏页面推入与返回（Push / Pop）
+   ========================================================================== */
+class PageStack {
+  constructor(containerElement) {
+    this.container = containerElement;
+    this.stack = []; // 存储 { appId, el }
+  }
+
+  // 推入一个新的 App 页面
+  push(app) {
+    // 如果当前栈顶已经是这个 App，就不重复推入
+    if (this.stack.length > 0 && this.stack[this.stack.length - 1].appId === app.id) {
+      return;
+    }
+
+    const page = document.createElement('div');
+    page.className = 'mobile-page';
+    page.dataset.appId = app.id;
+
+    // 顶部导航栏
+    const appbar = document.createElement('div');
+    appbar.className = 'mobile-appbar';
+    
+    // 返回按钮
+    const backBtn = document.createElement('button');
+    backBtn.className = 'back';
+    backBtn.innerHTML = icon('arrow-left', 22);
+    backBtn.addEventListener('click', () => this.pop());
+    
+    // 标题
+    const title = document.createElement('span');
+    title.textContent = app.title;
+    title.style.fontWeight = '600';
+
+    appbar.appendChild(backBtn);
+    appbar.appendChild(title);
+
+    // 页面内容区
+    const body = document.createElement('div');
+    body.className = 'mobile-app-body';
+    try {
+      body.appendChild(app.render());
+    } catch (e) {
+      body.innerHTML = `<div style="padding:20px;color:red;">渲染出错: ${e.message}</div>`;
+      console.error(e);
+    }
+
+    page.appendChild(appbar);
+    page.appendChild(body);
+    this.container.appendChild(page);
+    
+    this.stack.push({ appId: app.id, el: page });
+
+    // 触发进入动画
+    requestAnimationFrame(() => {
+      page.classList.add('active');
+    });
+  }
+
+  // 弹出栈顶页面（返回）
+  pop() {
+    if (this.stack.length === 0) return;
+    
+    const top = this.stack.pop();
+    top.el.classList.remove('active');
+    
+    // 等待动画结束后移除 DOM
+    setTimeout(() => {
+      top.el.remove();
+    }, 300); // 与 CSS transition 时长保持一致
+  }
+
+  // 关闭指定的 App（如果它在栈中）
+  close(appId) {
+    const index = this.stack.findIndex(item => item.appId === appId);
+    if (index === -1) return;
+    
+    // 如果关闭的不是栈顶，需要把上面的也一起关掉
+    while (this.stack.length > index) {
+      this.pop();
+    }
+  }
+
+  // 刷新指定 App 的内容
+  refresh(appId) {
+    const item = this.stack.find(s => s.appId === appId);
+    if (!item) return;
+    
+    const app = window.APPS.find(a => a.id === appId);
+    if (!app) return;
+    
+    const body = item.el.querySelector('.mobile-app-body');
+    if (body) {
+      const scrollTop = body.scrollTop;
+      body.innerHTML = '';
+      try {
+        body.appendChild(app.render());
+      } catch (e) {
+        body.innerHTML = `<div style="padding:20px;color:red;">刷新出错: ${e.message}</div>`;
+      }
+      body.scrollTop = scrollTop;
+    }
+  }
+
+  // 判断某个 App 是否在栈中
+  isRunning(appId) {
+    return this.stack.some(s => s.appId === appId);
+  }
+
+  // 返回（对外暴露）
+  goBack() {
+    this.pop();
+  }
+}
+
+/* ==========================================================================
+   7. 全局 Shell 统一接口 (Shell API)
+   用来屏蔽桌面端和手机端的差异，App 内部统一调用 Shell 的方法
+   ========================================================================== */
+window.Shell = {
+  _impl: null, // 实际执行者：DesktopShell 或 MobileShell
+
+  // 初始化时注入具体实现
+  use(impl) {
+    this._impl = impl;
+  },
+
+  // 打开 App
+  openApp(appId) {
+    if (this._impl) this._impl.openApp(appId);
+  },
+
+  // 关闭 App
+  closeApp(appId) {
+    if (this._impl) this._impl.closeApp(appId);
+  },
+
+  // 返回上一级（主要针对手机端）
+  goBack() {
+    if (this._impl && this._impl.goBack) this._impl.goBack();
+  },
+
+  // 弹出全局通知 (Toast)
+  notify(msg) {
+    if (this._impl && this._impl.notify) {
+      this._impl.notify(msg);
+    } else {
+      // Fallback，如果 _impl 未初始化时的简易提示
+      console.log('[Notify]', msg);
+    }
+  },
+
+  // 判断 App 是否运行中
+  isRunning(appId) {
+    return this._impl ? this._impl.isRunning(appId) : false;
+  },
+
+  // 刷新 App 内容
+  refresh(appId) {
+    if (this._impl && this._impl.refresh) this._impl.refresh(appId);
+  }
+};
+</script>
+<script>
+/* ==========================================================================
+   8. 城市与车站数据 (Geo & Station Data)
+   提供火车票（RailWayPass）和机票（FLYTrip）所需的城市、车站、机场数据。
+   ========================================================================== */
+
+// --- 工具函数：解析车站/机场字符串 ---
+function parseStationRaw(raw) {
+  const map = {};
+  raw.trim().split('\n').forEach(line => {
+    const trimmed = line.trim();
+    if (!trimmed) return;
+    
+    const idx = trimmed.indexOf(':');
+    if (idx < 0) return;
+    
+    const city = trimmed.slice(0, idx).trim();
+    const stations = trimmed.slice(idx + 1).split('/').map(s => s.trim()).filter(Boolean);
+    
+    if (city && stations.length) {
+      map[city] = stations;
+    }
+  });
+  return map;
+}
+
+// ==========================================================================
+// 国内车站数据（一）：华北地区 & 东北地区
+// ==========================================================================
+const STATIONS_NORTH_AND_NE = `
+北京:北京/北京南/北京西/北京北/北京朝阳/北京丰台/北京大兴/清河/北京东/北京城市副中心/顺义西/怀柔南/密云北
+天津:天津/天津西/天津南/天津北/武清/滨海/滨海西/杨柳青/静海/蓟州北/宝坻南
+石家庄:石家庄/石家庄北/石家庄东/正定机场/高邑西/藁城南/辛集南/晋州/新乐/元氏
+唐山:唐山/唐山北/唐山南/滦县/曹妃甸东/遵化北/玉田县/迁安/滦河
+秦皇岛:秦皇岛/山海关/北戴河/昌黎/抚宁/卢龙/青龙
+邯郸:邯郸/邯郸东/武安/涉县/磁县/临漳/成安/大名
+邢台:邢台/邢台东/沙河市/临城/内丘/隆尧/宁晋/清河城
+保定:保定/保定东/涿州东/高碑店东/定州东/涞水/易县/唐县/望都/顺平
+张家口:张家口/张家口南/宣化北/下花园北/怀来/涿鹿/蔚县/阳原/张北
+承德:承德/承德东/滦平/兴隆县西/平泉北/隆化/围场
+沧州:沧州/沧州西/泊头/青县/吴桥/东光/肃宁/任丘/河间
+廊坊:廊坊/廊坊北/燕郊/固安东/香河/三河/大厂/永清
+衡水:衡水/衡水北/枣强/深州/景州/安平/饶阳
+雄安新区:雄安/白洋淀/白沟/昝岗
+太原:太原/太原南/太原东/阳曲西/晋祠/太原北/中北大学
+大同:大同/大同南/阳高南/天镇/左云/广灵/浑源
+阳泉:阳泉/阳泉北/平定/盂县北/娘子关
+长治:长治/长治东/长治北/襄垣东/沁县/武乡/黎城
+晋城:晋城/晋城东/高平东/阳城/沁水/陵川
+朔州:朔州/朔州东/应县西/怀仁东/山阴/右玉
+晋中:晋中/榆次/平遥古城/介休东/太谷西/祁县东/灵石东/寿阳
+运城:运城/运城北/永济北/闻喜西/垣曲/河津/稷山/新绛
+忻州:忻州/忻州西/五台山/原平西/繁峙/代县/宁武
+临汾:临汾/临汾西/侯马西/霍州东/襄汾西/洪洞西/曲沃
+吕梁:吕梁/孝义/汾阳/文水/交城/柳林南/临县
+呼和浩特:呼和浩特/呼和浩特东/呼和浩特南/察素齐/托克托东/和林格尔
+包头:包头/包头东/包头南/东胜西/土默特右旗/固阳
+乌海:乌海/乌海西/乌海北/海南
+赤峰:赤峰/赤峰南/平庄/宁城/林西/大板
+通辽:通辽/通辽北/霍林郭勒/开鲁/奈曼/扎鲁特
+鄂尔多斯:鄂尔多斯/东胜/康巴什/达拉特西/准格尔/乌审旗
+呼伦贝尔:海拉尔/牙克石/满洲里/扎兰屯/根河/额尔古纳/鄂伦春
+巴彦淖尔:临河/乌拉特前旗/五原/杭锦后旗/磴口
+乌兰察布:集宁南/乌兰察布/丰镇/卓资东/兴和北/商都
+沈阳:沈阳/沈阳北/沈阳南/沈阳东/苏家屯/浑南/沈北新区
+大连:大连/大连北/金州/瓦房店西/庄河北/普兰店/旅顺/长海
+鞍山:鞍山/鞍山西/海城西/台安/岫岩
+抚顺:抚顺/抚顺北/清原/新宾/南杂木
+本溪:本溪/本溪新城/南芬北/桓仁/小市
+丹东:丹东/丹东西/凤城东/宽甸/东港北
+锦州:锦州/锦州南/锦州北/凌海南/义县/黑山北
+营口:营口/营口东/鲅鱼圈/盖州西/大石桥
+阜新:阜新/阜新南/彰武/清河门/新邱
+辽阳:辽阳/辽阳东/灯塔/弓长岭/首山
+盘锦:盘锦/盘锦北/大洼/盘山
+铁岭:铁岭/铁岭西/开原西/调兵山/昌图
+朝阳:朝阳/朝阳南/喀左/建平/凌源
+葫芦岛:葫芦岛/葫芦岛北/兴城西/绥中北/建昌
+长春:长春/长春西/长春南/龙嘉/九台南/双阳/农安
+吉林:吉林/吉林西/蛟河西/舒兰/桦甸/磐石
+四平:四平/四平东/公主岭南/梨树/伊通
+辽源:辽源/东丰/东辽
+通化:通化/通化县/梅河口/辉南/柳河/集安
+白山:白山/白山东/抚松/靖宇/临江
+松原:松原/松原北/乾安/扶余北/长岭
+白城:白城/白城东/镇赉/洮南/通榆/大安
+延边:延吉/延吉西/图们北/敦化/珲春/龙井
+哈尔滨:哈尔滨/哈尔滨西/哈尔滨东/哈尔滨北/哈尔滨南/双城北/阿城北/宾州
+齐齐哈尔:齐齐哈尔/齐齐哈尔南/富拉尔基/讷河/泰来/克山
+鸡西:鸡西/鸡西西/密山/虎林/鸡东
+鹤岗:鹤岗/鹤岗南/萝北/绥滨
+双鸭山:双鸭山/双鸭山西/集贤/友谊/宝清
+大庆:大庆/大庆西/大庆东/让胡路西/林甸/杜尔伯特
+伊春:伊春/伊春西/铁力/嘉荫/南岔
+佳木斯:佳木斯/佳木斯西/桦南/汤原/抚远
+七台河:七台河/七台河西/勃利
+牡丹江:牡丹江/牡丹江西/海林北/宁安/绥芬河/林口南
+黑河:黑河/北安/嫩江/五大连池/孙吴
+绥化:绥化/绥化西/肇东/安达/海伦/庆安
+大兴安岭:加格达奇/漠河/塔河
+`;
+
+// 解析并保存到全局变量
+const STATIONS_PART_1 = parseStationRaw(STATIONS_NORTH_AND_NE);
+</script>
+<script>
+/* ==========================================================================
+   8. 城市与车站数据 (Geo & Station Data)
+   国内车站数据（二）：华东地区 & 华中地区
+   ========================================================================== */
+
+const STATIONS_EAST_AND_CENTRAL = `
+上海:上海/上海虹桥/上海南/上海西/上海东/上海虹桥南/安亭北/南翔北
+南京:南京/南京南/南京西/南京北/江宁/浦口/溧水/高淳
+无锡:无锡/无锡东/无锡新区/宜兴/江阴/惠山
+徐州:徐州/徐州东/徐州北/邳州东/新沂南/睢宁/丰县
+常州:常州/常州北/常州东/溧阳/金坛/戚墅堰
+苏州:苏州/苏州北/苏州园区/苏州新区/昆山南/张家港/常熟/太仓/吴江
+南通:南通/南通西/南通东/海安/如皋/启东/海门
+连云港:连云港/连云港东/赣榆/东海县/灌云/灌南
+淮安:淮安/淮安东/淮安南/涟水/洪泽/金湖
+盐城:盐城/盐城北/盐城西/大丰/东台/建湖/射阳
+扬州:扬州/扬州东/扬州西/江都/高邮北/宝应
+镇江:镇江/镇江南/丹阳/句容西/扬中
+泰州:泰州/泰州南/姜堰/泰兴/靖江/兴化
+宿迁:宿迁/宿迁东/泗阳/沭阳/泗洪
+杭州:杭州/杭州东/杭州南/杭州西/余杭/萧山/富阳西/桐庐东/建德/千岛湖
+宁波:宁波/宁波东/宁波北/余姚北/奉化/宁海/象山
+温州:温州/温州南/温州北/乐清/瑞安/平阳/苍南
+嘉兴:嘉兴/嘉兴南/嘉兴东/嘉善南/桐乡/海宁西/平湖
+湖州:湖州/湖州东/长兴/德清/安吉
+绍兴:绍兴/绍兴北/绍兴东/诸暨/嵊州新昌/上虞南
+金华:金华/金华南/义乌/永康南/东阳/浦江/武义北/兰溪
+衢州:衢州/衢州西/龙游/江山/常山/开化
+舟山:舟山/舟山北/普陀/岱山
+台州:台州/台州西/台州南/临海/温岭/三门县/玉环
+丽水:丽水/丽水西/缙云西/青田/松阳/龙泉
+合肥:合肥/合肥南/合肥西/合肥北城/肥东/肥西/巢湖东/长临河
+芜湖:芜湖/芜湖东/芜湖北/繁昌西/无为/南陵
+蚌埠:蚌埠/蚌埠南/蚌埠东/怀远/固镇/五河
+淮南:淮南/淮南东/淮南南/寿县/凤台/潘集
+马鞍山:马鞍山/马鞍山东/当涂东/含山西/和县
+淮北:淮北/淮北北/濉溪
+铜陵:铜陵/铜陵北/铜陵西/枞阳
+安庆:安庆/安庆西/安庆北/桐城东/望江北/潜山/太湖
+黄山:黄山/黄山北/黄山南/黟县东/歙县北/祁门
+滁州:滁州/滁州北/滁州南/全椒/来安/天长
+阜阳:阜阳/阜阳西/阜阳北/太和东/界首南/临泉/颍上北
+宿州:宿州/宿州东/宿州西/萧县北/灵璧/泗县
+六安:六安/六安东/六安南/金寨/霍邱/舒城
+亳州:亳州/亳州南/亳州东/涡阳/蒙城/利辛
+池州:池州/池州东/青阳/东至/石台
+宣城:宣城/宣城东/宣城南/宁国/绩溪北/泾县/广德
+福州:福州/福州南/福州东/福州西/长乐/闽清北/平潭
+厦门:厦门/厦门北/厦门高崎/厦门东/同安
+莆田:莆田/莆田东/莆田西/仙游/涵江
+三明:三明/三明北/三明南/永安南/沙县/尤溪/泰宁
+泉州:泉州/泉州东/泉州南/晋江/惠安/南安北/安溪
+漳州:漳州/漳州东/漳州南/龙海/漳浦/云霄/诏安
+南平:南平/南平北/南平东/武夷山东/建瓯西/邵武/政和
+龙岩:龙岩/龙岩东/龙岩南/漳平西/上杭/长汀南/连城
+宁德:宁德/宁德北/宁德东/福安/福鼎/霞浦/屏南
+南昌:南昌/南昌西/南昌东/南昌南/向塘/进贤南/安义
+景德镇:景德镇/景德镇北/景德镇东/乐平北
+萍乡:萍乡/萍乡北/萍乡东/上栗/莲花
+九江:九江/九江站/九江东/庐山/瑞昌西/湖口/都昌
+新余:新余/新余北/分宜
+鹰潭:鹰潭/鹰潭北/鹰潭东/贵溪北/余江
+赣州:赣州/赣州西/赣州东/赣县北/于都/瑞金/龙南东
+吉安:吉安/吉安西/吉安东/井冈山/泰和/遂川
+宜春:宜春/宜春西/宜春东/丰城东/樟树东/高安/靖安
+抚州:抚州/抚州东/抚州南/南城/南丰/崇仁
+上饶:上饶/上饶东/上饶南/玉山南/弋阳/婺源/鄱阳北
+济南:济南/济南西/济南东/济南南/大明湖/章丘北/长清/平阴
+青岛:青岛/青岛北/青岛西/青岛南/红岛/胶州北/平度/莱西北/即墨北
+淄博:淄博/淄博北/淄博东/临淄北/桓台/高青
+枣庄:枣庄/枣庄西/枣庄东/滕州东/台儿庄/峄城
+东营:东营/东营南/东营西/广饶/利津
+烟台:烟台/烟台南/烟台西/蓬莱/龙口/莱阳/海阳北
+潍坊:潍坊/潍坊北/潍坊东/青州市北/高密/昌邑/临朐
+济宁:济宁/济宁北/济宁东/曲阜东/兖州/邹城/梁山
+泰安:泰安/泰安东/泰安南/泰山/肥城/宁阳
+威海:威海/威海北/威海东/文登东/荣成/乳山
+日照:日照/日照西/日照南/莒县/五莲
+临沂:临沂/临沂北/临沂东/费县北/蒙山/沂水/兰陵
+德州:德州/德州东/德州南/禹城东/齐河/平原东
+聊城:聊城/聊城西/聊城东/临清/莘县/阳谷
+滨州:滨州/滨州北/滨州西/邹平/博兴/无棣
+菏泽:菏泽/菏泽东/菏泽南/郓城/巨野北/曹县/定陶
+郑州:郑州/郑州东/郑州西/郑州南/航空港/新郑机场/中牟/郑州航空港
+开封:开封/开封北/开封东/兰考南/杞县/尉氏
+洛阳:洛阳/洛阳东/洛阳龙门/关林/偃师/孟津/新安
+平顶山:平顶山/平顶山西/平顶山东/宝丰/郏县/鲁山
+安阳:安阳/安阳东/安阳西/林州/内黄/汤阴/滑县
+鹤壁:鹤壁/鹤壁东/浚县/淇县
+新乡:新乡/新乡东/新乡南/卫辉/长垣/原阳/延津
+焦作:焦作/焦作东/焦作西/修武西/博爱/温县/武陟
+濮阳:濮阳/濮阳东/濮阳南/南乐/范县/台前
+许昌:许昌/许昌东/许昌北/鄢陵/禹州/长葛北/襄城
+漯河:漯河/漯河西/漯河东/临颍/舞阳
+三门峡:三门峡/三门峡南/三门峡西/灵宝西/渑池南/义马
+南阳:南阳/南阳东/南阳南/方城/邓州东/新野/唐河
+商丘:商丘/商丘东/商丘南/民权北/永城北/夏邑县
+信阳:信阳/信阳东/信阳南/罗山/潢川/光山/固始
+周口:周口/周口东/周口南/项城/沈丘北/郸城
+驻马店:驻马店/驻马店西/驻马店东/西平/遂平/确山
+济源:济源/济源东/济源南
+武汉:武汉/汉口/武昌/武汉东/光谷/南湖东/纸坊东/天河机场
+黄石:黄石/黄石北/黄石东/大冶北/阳新
+十堰:十堰/十堰东/十堰西/武当山西/丹江口/郧阳
+宜昌:宜昌/宜昌东/宜昌北/当阳西/枝江北/宜都/长阳
+襄阳:襄阳/襄阳东/襄州/枣阳/谷城北/南漳/保康县
+鄂州:鄂州/鄂州东/鄂州北/华容东/梁子湖
+荆门:荆门/荆门东/荆门西/钟祥/京山/沙洋
+孝感:孝感/孝感东/孝感北/汉川/应城/安陆西
+荆州:荆州/荆州东/荆州北/松滋/公安/石首
+黄冈:黄冈/黄冈东/黄冈西/麻城北/蕲春南/武穴北
+咸宁:咸宁/咸宁北/咸宁东/赤壁北/嘉鱼/通山
+随州:随州/随州南/随州东/广水西/随县
+恩施:恩施/恩施北/利川/建始/巴东/咸丰
+仙桃:仙桃/仙桃西
+潜江:潜江/潜江西
+天门:天门/天门南
+神农架:神农架/新华
+长沙:长沙/长沙南/长沙西/长沙北/暮云/宁乡西/长沙机场
+株洲:株洲/株洲西/株洲南/醴陵东/攸县/茶陵南
+湘潭:湘潭/湘潭北/湘潭西/韶山南/湘乡
+衡阳:衡阳/衡阳东/衡阳西/耒阳西/南岳/衡山
+邵阳:邵阳/邵阳北/邵阳西/邵东/隆回/洞口
+岳阳:岳阳/岳阳东/岳阳南/汨罗东/临湘/华容
+常德:常德/常德东/常德西/汉寿/临澧/桃源
+张家界:张家界/张家界西/桑植/慈利
+益阳:益阳/益阳南/益阳东/桃江/南县/沅江
+郴州:郴州/郴州西/郴州南/资兴/宜章/桂阳
+永州:永州/永州东/永州南/祁阳/东安/道州
+怀化:怀化/怀化南/怀化西/芷江/新晃/溆浦南
+娄底:娄底/娄底南/娄底东/冷水江东/新化南
+湘西:吉首/吉首东/凤凰古城/龙山北
+`;
+
+const STATIONS_PART_2 = parseStationRaw(STATIONS_EAST_AND_CENTRAL);
+</script>
+<script>
+/* ==========================================================================
+   8. 城市与车站数据 (Geo & Station Data)
+   国内车站数据（三）：华南地区、西南地区、西北地区
+   ========================================================================== */
+
+const STATIONS_SOUTH_WEST_NORTH = `
+广州:广州/广州南/广州东/广州北/广州白云/广州西/庆盛/新塘/番禺/增城
+深圳:深圳/深圳北/深圳东/深圳西/福田/光明城/坪山/深圳机场北
+珠海:珠海/珠海北/珠海长隆/横琴/唐家湾/珠海机场
+汕头:汕头/汕头南/潮阳/潮南/汕头东/澄海
+佛山:佛山西/佛山/佛山东/三水南/顺德/高明
+韶关:韶关/韶关东/韶关西/乐昌东/南雄/始兴
+湛江:湛江/湛江西/湛江东/遂溪/廉江/吴川
+肇庆:肇庆/肇庆东/肇庆西/四会/广宁/怀集
+江门:江门/江门东/江门西/台山/开平南/恩平
+茂名:茂名/茂名西/茂名东/电白/化州/高州
+惠州:惠州/惠州北/惠州南/惠东/博罗北/龙门
+梅州:梅州/梅州西/梅州东/兴宁东/五华/丰顺东
+汕尾:汕尾/汕尾东/鲘门/陆丰/陆河
+河源:河源/河源东/河源北/龙川西/和平北/紫金
+阳江:阳江/阳江东/阳江高/阳春/阳西
+清远:清远/清远东/清远西/英德西/连州/佛冈
+东莞:东莞/东莞南/东莞东/虎门/常平南/东莞港
+中山:中山/中山北/中山南/小榄/南朗/古镇
+潮州:潮州/潮州东/潮汕/饶平/潮安
+揭阳:揭阳/揭阳南/揭阳潮汕/普宁/惠来
+云浮:云浮/云浮东/云浮新区/罗定/新兴县
+南宁:南宁/南宁东/南宁西/南宁南/凤岭南/吴圩机场
+柳州:柳州/柳州东/柳州南/鹿寨北/融水/三江南
+桂林:桂林/桂林北/桂林西/阳朔/全州南/兴安北/恭城
+梧州:梧州/梧州南/梧州西/藤县/岑溪
+北海:北海/北海东/北海北/合浦
+防城港:防城港/防城港北/东兴市
+钦州:钦州/钦州东/钦州西/灵山/浦北
+贵港:贵港/贵港东/桂平/平南南
+玉林:玉林/玉林东/玉林南/北流/容县/兴业
+百色:百色/百色东/百色西/田阳/靖西/平果
+贺州:贺州/贺州东/贺州西/钟山西/富川
+河池:河池/河池西/金城江/宜州/南丹/巴马
+来宾:来宾/来宾北/来宾东/忻城/象州
+崇左:崇左/崇左东/崇左南/扶绥/凭祥东
+海口:海口/海口东/海口南/美兰机场/长流
+三亚:三亚/三亚东/三亚站/亚龙湾/崖州
+三沙:三沙/永兴岛
+儋州:儋州/儋州南/白马井
+琼海:琼海/琼海北/博鳌
+文昌:文昌/文昌北
+万宁:万宁/万宁北/神州半岛
+东方:东方/东方北/感城
+五指山:五指山/水满乡
+成都:成都/成都东/成都西/成都南/犀浦/双流机场/天府机场/成都北
+自贡:自贡/自贡北/自贡东/富顺
+攀枝花:攀枝花/攀枝花南/攀枝花东/米易
+泸州:泸州/泸州北/泸州东/纳溪/泸县
+德阳:德阳/德阳南/德阳西/广汉北/什邡西/绵竹
+绵阳:绵阳/绵阳北/绵阳南/江油北/三台/梓潼
+广元:广元/广元西/广元南/剑门关/苍溪/旺苍
+遂宁:遂宁/遂宁西/遂宁南/射洪/大英东/蓬溪
+内江:内江/内江北/内江东/隆昌北/资中北/威远
+乐山:乐山/乐山北/乐山西/峨眉山/犍为/夹江
+南充:南充/南充北/南充西/阆中/南部/营山
+眉山:眉山/眉山东/眉山南/彭山北/青神/仁寿
+宜宾:宜宾/宜宾西/宜宾东/长宁/兴文/屏山
+广安:广安/广安南/广安西/华蓥北/岳池/武胜
+达州:达州/达州东/达州南/宣汉/万源北/大竹
+雅安:雅安/雅安南/雅安东/名山/汉源/石棉
+巴中:巴中/巴中北/巴中东/南江/通江/平昌
+资阳:资阳/资阳北/资阳西/安岳/乐至
+阿坝:松潘/九寨沟/茂县/汶川
+甘孜:康定/稻城/理塘/泸定
+凉山:西昌西/西昌/冕宁/德昌西/普格/越西
+贵阳:贵阳/贵阳东/贵阳北/贵阳西/龙洞堡机场/清镇西/贵安
+六盘水:六盘水/六盘水东/六盘水南/盘州/水城
+遵义:遵义/遵义南/遵义西/播州/桐梓北/茅台/赤水
+安顺:安顺/安顺西/安顺东/普定/镇宁/关岭
+毕节:毕节/毕节东/毕节南/大方/织金北/威宁
+铜仁:铜仁/铜仁南/铜仁北/玉屏/江口
+黔西南:兴义/兴义南/兴义西/安龙
+黔东南:凯里/凯里南/凯里东/镇远/三穗/从江
+黔南:都匀/都匀东/都匀南/福泉北/荔波/平塘
+昆明:昆明/昆明南/昆明西/昆明东/长水机场/呈贡/昆明北
+曲靖:曲靖/曲靖北/曲靖东/沾益北/富源北/罗平
+玉溪:玉溪/玉溪南/玉溪西/通海/元江/澄江
+保山:保山/保山北/腾冲/龙陵/昌宁
+昭通:昭通/昭通北/昭通东/镇雄/彝良
+丽江:丽江/丽江东/永胜/华坪
+普洱:普洱/普洱北/宁洱/墨江/景谷
+临沧:临沧/临沧北/云县/凤庆/沧源
+楚雄:楚雄/楚雄南/楚雄西/禄丰南/元谋西
+红河:蒙自北/弥勒/建水/河口北/个旧/开远南
+文山:文山/文山北/普者黑/丘北/富宁
+西双版纳:西双版纳/景洪/勐海/勐腊
+大理:大理/大理东/祥云/洱源/剑川/鹤庆
+德宏:芒市/瑞丽/陇川
+怒江:六库/兰坪/福贡
+迪庆:香格里拉/德钦/维西
+拉萨:拉萨/拉萨西/拉萨东/曲水县
+日喀则:日喀则/日喀则西/江孜/定日
+昌都:昌都/八宿/芒康
+林芝:林芝/林芝东/米林/波密
+山南:山南/泽当/贡嘎/桑日
+那曲:那曲/安多/比如
+阿里:狮泉河/普兰/札达
+西安:西安/西安北/西安西/西安南/鄠邑/临潼/西安机场西
+铜川:铜川/铜川东/铜川北/耀州/宜君
+宝鸡:宝鸡/宝鸡南/宝鸡西/岐山/凤翔/扶风
+咸阳:咸阳/咸阳北/咸阳西/兴平/礼泉南/乾县
+渭南:渭南/渭南西/渭南东/华山北/大荔/蒲城东
+延安:延安/延安北/延安南/子长/黄陵南/洛川东
+汉中:汉中/汉中站/汉中北/城固北/宁强南/勉县
+榆林:榆林/榆林南/榆林西/神木北/府谷/米脂
+安康:安康/安康南/安康东/旬阳北/紫阳/石泉
+商洛:商洛/商洛北/丹凤/柞水/镇安
+杨凌:杨凌/杨凌南
+兰州:兰州/兰州西/兰州东/兰州新区/中川机场/榆中
+嘉峪关:嘉峪关/嘉峪关南/嘉峪关东
+金昌:金昌/金昌东/金昌西/永昌
+白银:白银/白银西/白银南/平川/靖远北
+天水:天水/天水南/天水西/甘谷/秦安/武山
+武威:武威/武威东/武威南/古浪/天祝
+张掖:张掖/张掖西/张掖南/临泽南/高台南/民乐
+平凉:平凉/平凉南/平凉东/泾川/华亭
+酒泉:酒泉/酒泉南/酒泉东/玉门/敦煌/瓜州
+庆阳:庆阳/庆阳南/庆阳西/宁县/环县
+定西:定西/定西北/定西南/陇西/岷县
+陇南:陇南/陇南西/陇南东/武都/宕昌
+临夏:临夏/临夏西/永靖/和政
+甘南:合作/夏河/碌曲
+西宁:西宁/西宁西/西宁北/大通西/湟源/海东西
+海东:海东/平安/乐都南/民和南/循化
+海西:德令哈/格尔木/察尔汗/茫崖
+海北:门源/祁连/刚察
+黄南:同仁/尖扎/泽库
+果洛:玛沁/达日/班玛
+玉树:玉树/称多/杂多
+银川:银川/银川东/银川南/河东机场/灵武北/宁东
+石嘴山:石嘴山/石嘴山南/平罗/惠农南
+吴忠:吴忠/吴忠北/青铜峡/盐池/同心
+固原:固原/固原北/泾源/西吉/彭阳
+中卫:中卫/中卫南/中宁东/海原
+乌鲁木齐:乌鲁木齐/乌鲁木齐南/乌鲁木齐西/地窝堡机场/达坂城/乌鲁木齐新
+克拉玛依:克拉玛依/克拉玛依北/独山子
+吐鲁番:吐鲁番/吐鲁番北/鄯善北/托克逊
+哈密:哈密/哈密南/哈密东/伊吾/巴里坤
+昌吉:昌吉/昌吉东/阜康/奇台/玛纳斯
+博尔塔拉:博乐/阿拉山口/精河/双河
+巴音郭楞:库尔勒/库尔勒东/焉耆/若羌/且末
+阿克苏:阿克苏/阿克苏西/库车/新和/沙雅
+克孜勒苏:阿图什/阿克陶/乌恰
+喀什:喀什/喀什东/莎车/泽普/叶城
+和田:和田/和田东/墨玉/洛浦/于田
+伊犁:伊宁/伊宁东/奎屯/霍尔果斯/霍城
+塔城:塔城/乌苏/沙湾/和布克赛尔
+阿勒泰:阿勒泰/北屯/富蕴/布尔津
+石河子:石河子/石河子北
+阿拉尔:阿拉尔/阿拉尔北
+图木舒克:图木舒克/图木舒克东
+五家渠:五家渠/五家渠北
+`;
+
+const STATIONS_PART_3 = parseStationRaw(STATIONS_SOUTH_WEST_NORTH);
+
+/* ==========================================================================
+   全国火车站数据合并
+   ========================================================================== */
+const ALL_CN_STATIONS = Object.assign({}, STATIONS_PART_1, STATIONS_PART_2, STATIONS_PART_3);
+const CN_CITIES = Object.keys(ALL_CN_STATIONS);
+</script>
+<script>
+/* ==========================================================================
+   9. 机场数据 (Airport Data)
+   ========================================================================== */
+
+// ==========================================================================
+// 国内机场数据 (Domestic Airports)
+// ==========================================================================
+const AIRPORTS_CN_RAW = `
+北京:首都国际机场/大兴国际机场
+上海:虹桥国际机场/浦东国际机场
+广州:白云国际机场
+深圳:宝安国际机场
+成都:双流国际机场/天府国际机场
+重庆:江北国际机场/巫山机场/武隆机场
+天津:滨海国际机场
+石家庄:正定国际机场
+太原:武宿国际机场
+呼和浩特:白塔国际机场
+沈阳:桃仙国际机场
+大连:周水子国际机场
+长春:龙嘉国际机场
+哈尔滨:太平国际机场
+南京:禄口国际机场
+无锡:硕放国际机场
+徐州:观音国际机场
+常州:奔牛国际机场
+南通:兴东国际机场
+连云港:花果山国际机场
+盐城:南洋国际机场
+扬州:扬泰国际机场
+杭州:萧山国际机场
+宁波:栎社国际机场
+温州:龙湾国际机场
+嘉兴:南湖机场
+义乌:义乌机场
+舟山:普陀山机场
+台州:路桥机场
+合肥:新桥国际机场
+黄山:屯溪国际机场
+阜阳:西关机场
+安庆:天柱山机场
+福州:长乐国际机场
+厦门:高崎国际机场/翔安国际机场
+泉州:晋江国际机场
+南平:武夷山机场
+南昌:昌北国际机场
+赣州:黄金机场
+景德镇:罗家机场
+九江:庐山机场
+济南:遥墙国际机场
+青岛:胶东国际机场
+烟台:蓬莱国际机场
+威海:大水泊国际机场
+临沂:启阳国际机场
+潍坊:南苑机场
+东营:胜利机场
+济宁:曲阜机场
+郑州:新郑国际机场
+洛阳:北郊机场
+南阳:姜营机场
+武汉:天河国际机场
+宜昌:三峡国际机场
+襄阳:刘集机场
+恩施:许家坪机场
+十堰:武当山机场
+长沙:黄花国际机场
+张家界:荷花国际机场
+常德:桃花源机场
+衡阳:南岳机场
+岳阳:三荷机场
+广州:（白云，见上）
+珠海:金湾机场
+揭阳:潮汕机场
+湛江:吴川机场
+惠州:平潭机场
+佛山:沙堤机场
+梅州:梅县机场
+南宁:吴圩国际机场
+桂林:两江国际机场
+柳州:白莲机场
+北海:福成机场
+梧州:西江机场
+玉林:福绵机场
+百色:巴马机场
+海口:美兰国际机场
+三亚:凤凰国际机场
+琼海:博鳌机场
+儋州:西庆机场
+成都:（双流/天府，见上）
+绵阳:南郊机场
+泸州:云龙机场
+宜宾:五粮液机场
+南充:高坪机场
+达州:河市机场
+广元:盘龙机场
+西昌:青山机场
+攀枝花:保安营机场
+贵阳:龙洞堡国际机场
+遵义:新舟机场/茅台机场
+铜仁:凤凰机场
+毕节:飞雄机场
+兴义:万峰林机场
+凯里:黄平机场
+黎平:黎平机场
+昆明:长水国际机场
+丽江:三义国际机场
+大理:荒草坝机场
+西双版纳:嘎洒国际机场
+腾冲:驼峰机场
+保山:云端机场
+昭通:昭通机场
+迪庆:香格里拉机场
+临沧:沧源机场
+普洱:思茅机场
+文山:砚山机场
+拉萨:贡嘎国际机场
+日喀则:和平机场
+林芝:米林机场
+昌都:邦达机场
+阿里:昆莎机场
+西安:咸阳国际机场
+榆林:榆阳机场
+延安:南泥湾机场
+汉中:城固机场
+安康:富强机场
+兰州:中川国际机场
+敦煌:莫高国际机场
+嘉峪关:嘉峪关机场
+张掖:甘州机场
+天水:麦积山机场
+庆阳:西峰机场
+夏河:甘加机场
+西宁:曹家堡国际机场
+格尔木:格尔木机场
+玉树:巴塘机场
+银川:河东国际机场
+中卫:沙坡头机场
+固原:六盘山机场
+乌鲁木齐:地窝堡国际机场
+喀什:喀什国际机场
+伊宁:伊宁机场
+库尔勒:库尔勒机场
+阿克苏:阿克苏机场
+和田:和田机场
+阿勒泰:阿勒泰机场
+克拉玛依:克拉玛依机场
+哈密:哈密机场
+塔城:塔城机场
+`;
+
+// ==========================================================================
+// 港澳台机场数据 (HK/Macao/Taiwan Airports)
+// ==========================================================================
+const AIRPORTS_HKMO_RAW = `
+香港:香港国际机场
+澳门:澳门国际机场
+台北:桃园国际机场/松山机场
+高雄:小港国际机场
+台中:清泉岗机场
+台南:台南机场
+花莲:花莲机场
+台东:台东机场
+金门:尚义机场
+马祖:南竿机场
+澎湖:马公机场
+`;
+
+// ==========================================================================
+// 国际机场数据 (International Airports)
+// ==========================================================================
+const AIRPORTS_INTL_RAW = `
+东京:成田国际机场/羽田机场
+大阪:关西国际机场/伊丹机场
+京都:无（用大阪）
+名古屋:中部国际机场
+札幌:新千岁机场
+福冈:福冈机场
+冲绳:那霸机场
+首尔:仁川国际机场/金浦国际机场
+釜山:金海国际机场
+济州:济州国际机场
+新加坡:樟宜国际机场
+曼谷:素万那普机场/廊曼机场
+清迈:清迈国际机场
+普吉:普吉国际机场
+芭提雅:乌塔堡机场
+吉隆坡:吉隆坡国际机场
+槟城:槟城国际机场
+亚庇:亚庇国际机场
+雅加达:苏加诺哈达国际机场
+巴厘岛:伍拉莱国际机场
+泗水:朱安达国际机场
+马尼拉:尼诺阿基诺国际机场
+宿务:麦克坦机场
+河内:内排国际机场
+胡志明市:新山一国际机场
+岘港:岘港国际机场
+仰光:仰光国际机场
+金边:金边国际机场
+万象:瓦岱国际机场
+迪拜:迪拜国际机场/阿勒马克图姆机场
+阿布扎比:扎耶德国际机场
+多哈:哈马德国际机场
+利雅得:哈立德国王国际机场
+吉达:阿卜杜勒阿齐兹国王国际机场
+科威特:科威特国际机场
+马斯喀特:马斯喀特国际机场
+安曼:阿莉娅王后国际机场
+特拉维夫:本古里安机场
+伊斯坦布尔:伊斯坦布尔机场/萨比哈机场
+安卡拉:埃森博阿机场
+德黑兰:伊玛目霍梅尼国际机场
+孟买:贾特拉帕蒂希瓦吉国际机场
+新德里:英迪拉甘地国际机场
+班加罗尔:肯佩戈达国际机场
+金奈:金奈国际机场
+加德满都:特里布万国际机场
+达卡:沙阿贾拉勒国际机场
+科伦坡:班达拉奈克国际机场
+马尔代夫:马累国际机场
+伦敦:希思罗机场/盖特威克机场/斯坦斯特德机场
+曼彻斯特:曼彻斯特机场
+爱丁堡:爱丁堡机场
+巴黎:戴高乐机场/奥利机场
+里昂:里昂机场
+马赛:马赛普罗旺斯机场
+尼斯:尼斯蓝色海岸机场
+法兰克福:法兰克福机场
+慕尼黑:慕尼黑机场
+柏林:勃兰登堡机场
+汉堡:汉堡机场
+杜塞尔多夫:杜塞尔多夫机场
+阿姆斯特丹:史基浦机场
+布鲁塞尔:布鲁塞尔机场
+卢森堡:卢森堡机场
+苏黎世:苏黎世机场
+日内瓦:日内瓦机场
+维也纳:维也纳国际机场
+布拉格:布拉格国际机场
+布达佩斯:布达佩斯机场
+华沙:肖邦机场
+哥本哈根:哥本哈根机场
+斯德哥尔摩:阿兰达机场
+奥斯陆:加勒穆恩机场
+赫尔辛基:万塔机场
+雷克雅未克:凯夫拉维克机场
+都柏林:都柏林机场
+罗马:菲乌米奇诺机场/钱皮诺机场
+米兰:马尔彭萨机场/利纳特机场
+威尼斯:马可波罗机场
+佛罗伦萨:佛罗伦萨机场
+那不勒斯:那不勒斯机场
+巴勒莫:巴勒莫机场
+马德里:巴拉哈斯机场
+巴塞罗那:巴塞罗那机场
+里斯本:里斯本机场
+波尔图:波尔图机场
+雅典:雅典国际机场
+圣托里尼:圣托里尼机场
+莫斯科:谢列梅捷沃机场/多莫杰多沃机场
+圣彼得堡:普尔科沃机场
+基辅:鲍里斯波尔机场
+明斯克:明斯克国际机场
+纽约:肯尼迪机场/纽瓦克机场/拉瓜迪亚机场
+洛杉矶:洛杉矶国际机场
+旧金山:旧金山国际机场
+西雅图:塔科马机场
+芝加哥:奥黑尔机场
+波士顿:波士顿洛根机场
+华盛顿:杜勒斯机场
+迈阿密:迈阿密国际机场
+奥兰多:奥兰多机场
+拉斯维加斯:麦卡伦机场
+达拉斯:达拉斯沃斯堡机场
+休斯顿:乔治布什机场
+亚特兰大:哈茨菲尔德机场
+温哥华:温哥华国际机场
+多伦多:皮尔逊机场
+蒙特利尔:特鲁多机场
+卡尔加里:卡尔加里机场
+墨西哥城:墨西哥城国际机场
+坎昆:坎昆机场
+圣保罗:瓜鲁柳斯机场
+里约热内卢:加利昂机场
+布宜诺斯艾利斯:埃塞萨机场
+利马:豪尔赫查韦斯机场
+圣地亚哥:阿图罗梅里诺机场
+波哥大:埃尔多拉多机场
+悉尼:悉尼机场
+墨尔本:墨尔本机场
+布里斯班:布里斯班机场
+珀斯:珀斯机场
+阿德莱德:阿德莱德机场
+奥克兰:奥克兰机场
+惠灵顿:惠灵顿机场
+基督城:基督城机场
+开罗:开罗国际机场
+亚历山大:亚历山大机场
+开普敦:开普敦机场
+约翰内斯堡:奥坦博国际机场
+内罗毕:乔莫肯雅塔机场
+卡萨布兰卡:穆罕默德五世机场
+突尼斯:突尼斯机场
+亚的斯亚贝巴:博莱机场
+拉各斯:拉各斯机场
+阿克拉:科托卡机场
+达累斯萨拉姆:朱利叶斯尼雷尔机场
+`;
+
+// ==========================================================================
+// 解析与合并
+// ==========================================================================
+const ALL_AIRPORTS_CN = parseStationRaw(AIRPORTS_CN_RAW);
+const ALL_AIRPORTS_HKMO = parseStationRaw(AIRPORTS_HKMO_RAW);
+const ALL_AIRPORTS_INTL = parseStationRaw(AIRPORTS_INTL_RAW);
+
+// 合并所有机场
+const ALL_AIRPORTS = Object.assign(
+  {}, 
+  ALL_AIRPORTS_CN, 
+  ALL_AIRPORTS_HKMO, 
+  ALL_AIRPORTS_INTL
+);
+
+/* ==========================================================================
+   10. 城市区域划分与查找工具
+   ========================================================================== */
+// 港澳台城市列表
+const HKMO_CITIES = Object.keys(ALL_AIRPORTS_HKMO);
+// 国际城市列表
+const INTL_CITIES = Object.keys(ALL_AIRPORTS_INTL);
+// 国内城市列表（基于火车站和国内机场的并集）
+const DOMESTIC_CITIES = Array.from(new Set([
+  ...Object.keys(ALL_CN_STATIONS),
+  ...Object.keys(ALL_AIRPORTS_CN)
+]));
+
+// 判断城市所属区域
+function cityRegion(city) {
+  if (!city) return 'intl';
+  if (HKMO_CITIES.includes(city)) return 'hkmo';
+  if (INTL_CITIES.includes(city)) return 'intl';
+  return 'domestic';
+}
+
+// 通过车站名反查城市
+function findCityByStation(stationName) {
+  for (const [city, stations] of Object.entries(ALL_CN_STATIONS)) {
+    if (stations.includes(stationName)) return city;
+  }
+  return null;
+}
+
+// 通过机场名反查城市
+function findCityByAirport(airportName) {
+  for (const [city, airports] of Object.entries(ALL_AIRPORTS)) {
+    if (airports.includes(airportName)) return city;
+  }
+  return null;
+}
+</script>
+<script>
+/* ==========================================================================
+   11. 核心数据层 (Data Layer)
+   包含用户信息、乘客管理、银行卡管理、钱包、消息和订单的 CRUD 操作
+   ========================================================================== */
+
+/* ---------- 用户信息 ---------- */
+window.UserProfile = {
+  get() {
+    return Store.get('profile', { nickname: '旅行者', phone: '13800138000' });
+  },
+  set(profile) {
+    Store.set('profile', profile);
+    maybeAutoSync();
+  }
+};
+
+/* ---------- 乘客管理 ---------- */
+window.Passengers = {
+  list() {
+    return Store.get('passengers', [
+      { id: 'p1', name: '张三', phone: '13800138000', idNo: '110101199001011234', type: '成人' }
+    ]);
+  },
+  set(list) {
+    Store.set('passengers', list);
+    maybeAutoSync();
+  },
+  add(passenger) {
+    const list = this.list();
+    list.push({ ...passenger, id: 'p' + Date.now() });
+    this.set(list);
+  },
+  update(id, passenger) {
+    const list = this.list().map(p => p.id === id ? { ...p, ...passenger } : p);
+    this.set(list);
+  },
+  remove(id) {
+    this.set(this.list().filter(p => p.id !== id));
+  }
+};
+
+/* ---------- 银行卡管理 (新增功能) ---------- */
+window.BankCards = {
+  // 获取所有卡
+  list() {
+    return Store.get('cards', []);
+  },
+  // 覆盖保存
+  set(list) {
+    Store.set('cards', list);
+    maybeAutoSync();
+  },
+  // 添加卡
+  add(card) {
+    const list = this.list();
+    list.push({ 
+      ...card, 
+      id: 'card_' + Date.now(),
+      createdAt: Date.now(),
+      bgClass: `bg-${list.length % 5}` // 循环分配背景色
+    });
+    this.set(list);
+  },
+  // 更新卡（例如修改余额、修改卡号等）
+  update(id, updates) {
+    const list = this.list().map(c => c.id === id ? { ...c, ...updates } : c);
+    this.set(list);
+  },
+  // 删除卡
+  remove(id) {
+    this.set(this.list().filter(c => c.id !== id));
+  },
+  // 获取单张卡
+  get(id) {
+    return this.list().find(c => c.id === id);
+  },
+  // 扣款
+  pay(id, amount) {
+    const card = this.get(id);
+    if (!card) return { ok: false, reason: '银行卡不存在' };
+    if (card.balance < amount) return { ok: false, reason: '银行卡余额不足' };
+    
+    this.update(id, { balance: card.balance - amount });
+    return { ok: true };
+  }
+};
+
+/* ---------- 钱包 ---------- */
+window.Wallet = {
+  getBalance() {
+    return Store.get('balance', 5000);
+  },
+  setBalance(v) {
+    Store.set('balance', v);
+    maybeAutoSync();
+  },
+  pay(amount) {
+    const b = this.getBalance();
+    if (b < amount) return { ok: false, reason: '钱包余额不足' };
+    this.setBalance(b - amount);
+    return { ok: true };
+  }
+};
+
+/* ---------- 消息 ---------- */
+window.Messages = {
+  list() {
+    return Store.get('messages', []);
+  },
+  set(list) {
+    Store.set('messages', list);
+    maybeAutoSync();
+  },
+  add(msg) {
+    const list = this.list();
+    list.unshift({
+      id: 'MSG' + Date.now(),
+      title: msg.title,
+      body: msg.body,
+      createdAt: Date.now(),
+      read: false
+    });
+    this.set(list);
+  },
+  markAllRead() {
+    this.set(this.list().map(m => ({ ...m, read: true })));
+  }
+};
+
+/* ---------- 订单 ---------- */
+window.Orders = {
+  list() {
+    return Store.get('orders', []);
+  },
+  set(list) {
+    Store.set('orders', list);
+    maybeAutoSync();
+  },
+  add(order) {
+    const list = this.list();
+    list.unshift(order);
+    this.set(list);
+    Messages.add({ title: '预订成功', body: `${order.sourceName}：${order.title}` });
+  },
+  cancel(id) {
+    this.set(this.list().map(o => o.id === id ? { ...o, status: 'cancelled' } : o));
+  }
+};
+
+/* ==========================================================================
+   12. 模拟数据生成器 (Mock Data Generators)
+   ========================================================================== */
+
+// 工具函数：生成随机整数 [min, max]
+function rand(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+// 工具函数：Hash 算法
+function hash(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+// 时间补齐
+function pad(n) { return String(n).padStart(2, '0'); }
+// 获取今天的日期字符串 YYYY-MM-DD
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+// 根据基础时间和增加的分钟数，计算到达时间
+function addMinutes(hhmm, mins) {
+  const [h, m] = hhmm.split(':').map(Number);
+  const total = (h * 60 + m + mins) % (24 * 60);
+  return `${pad(Math.floor(total / 60))}:${pad(total % 60)}`;
+}
+// 将分钟转为“X小时Y分”
+function durText(mins) {
+  const h = Math.floor(mins / 60), m = mins % 60;
+  return m ? `${h}小时${m}分` : `${h}小时`;
+}
+// 生成发车/起飞时间
+function makeTime(seed, idx, base = 6, span = 15) {
+  const h = base + ((seed + idx * 7) % span);
+  const m = [0, 10, 15, 20, 30, 40, 45, 50][(seed + idx * 3) % 8];
+  return `${pad(h)}:${pad(m)}`;
+}
+
+/* ---------- 火车票生成器 (RailWayPass) ---------- */
+function genTrains(fromStation, toStation) {
+  const fromCity = findCityByStation(fromStation) || fromStation;
+  const toCity = findCityByStation(toStation) || toStation;
+  
+  const rf = cityRegion(fromCity);
+  const rt = cityRegion(toCity);
+  const isIntl = rf === 'intl' || rt === 'intl';
+  const isHkmo = rf === 'hkmo' || rt === 'hkmo';
+  
+  const seed = hash(fromStation + '|' + toStation);
+  
+  // 价格与时长基数
+  const basePrice = isIntl ? 1200 : (isHkmo ? 480 : 220);
+  const durBase = isIntl ? 900 : (isHkmo ? 240 : 120);
+  
+  // 车型配置：高铁、动车、普快
+  const types = [
+    { prefix: 'G', name: '高铁', factor: 1.0 },
+    { prefix: 'G', name: '高铁', factor: 1.1 },
+    { prefix: 'D', name: '动车', factor: 0.85 },
+    { prefix: 'D', name: '动车', factor: 0.9 },
+    { prefix: 'K', name: '普快', factor: 0.6 }
+  ];
+  
+  const list = [];
+  for (let i = 0; i < 6; i++) {
+    const type = types[i % types.length];
+    const s = seed + i * 37;
+    
+    const dep = makeTime(s, i, 6, 14);
+    // 普快耗时更长
+    const dur = Math.max(45, Math.round((durBase + (s % 160) - 60) * (type.prefix === 'K' ? 1.8 : 1)));
+    const arr = addMinutes(dep, dur);
+    
+    // 二等座/硬座价格
+    const p2 = Math.round((basePrice + (s % 220)) * type.factor);
+    
+    // 座位选项
+    const options = [
+      { name: (type.prefix === 'G' || type.prefix === 'D') ? '二等座' : '硬座', price: p2, left: 5 + (s % 30) },
+      { name: (type.prefix === 'G' || type.prefix === 'D') ? '一等座' : '硬卧', price: Math.round(p2 * 1.7), left: (s % 15) },
+      { name: '商务座', price: Math.round(p2 * 3.2), left: (s % 6) }
+    ];
+
+    list.push({
+      no: `${type.prefix}${100 + i * 3 + (s % 20)}`,
+      typeName: type.name,
+      from: fromStation,
+      to: toStation,
+      dep,
+      arr,
+      dur,
+      options
+    });
+  }
+  return list;
+}
+
+/* ---------- 机票生成器 (FLYTrip) ---------- */
+function genFlights(fromAirport, toAirport) {
+  const fromCity = findCityByAirport(fromAirport) || fromAirport;
+  const toCity = findCityByAirport(toAirport) || toAirport;
+  
+  const rf = cityRegion(fromCity);
+  const rt = cityRegion(toCity);
+  const isIntl = rf === 'intl' || rt === 'intl';
+  const isHkmo = rf === 'hkmo' || rt === 'hkmo';
+  
+  const seed = hash(fromAirport + '|' + toAirport);
+  
+  const basePrice = isIntl ? 2800 : (isHkmo ? 1200 : 650);
+  const durBase = isIntl ? 720 : (isHkmo ? 200 : 140);
+  
+  const airlines = [
+    { name: '国航', code: 'CA' }, { name: '东航', code: 'MU' },
+    { name: '南航', code: 'CZ' }, { name: '海航', code: 'HU' },
+    { name: '川航', code: '3U' }, { name: '厦航', code: 'MF' },
+    { name: '深航', code: 'ZH' }, { name: '吉祥', code: 'HO' }
+  ];
+  
+  const list = [];
+  for (let i = 0; i < 8; i++) {
+    const air = airlines[i % airlines.length];
+    const s = seed + i * 53;
+    
+    const dep = makeTime(s, i, 6, 15);
+    const dur = Math.max(60, durBase + (s % 120) - 40);
+    const arr = addMinutes(dep, dur);
+    
+    const p = basePrice + (s % 800);
+    
+    const options = [
+      { name: '经济舱', price: p, left: 9 + (s % 40) },
+      { name: '超级经济舱', price: Math.round(p * 1.6), left: 4 + (s % 12) },
+      { name: '商务舱', price: Math.round(p * 3.4), left: 1 + (s % 6) },
+      { name: '头等舱', price: Math.round(p * 4.8), left: (s % 3) }
+    ];
+
+    list.push({
+      no: `${air.code}${1000 + (s % 8000)}`,
+      airline: air.name,
+      from: fromAirport,
+      to: toAirport,
+      dep,
+      arr,
+      dur,
+      options
+    });
+  }
+  return list;
+}
+
+/* ---------- 酒店生成器 (Booking.com) ---------- */
+function genHotels(city) {
+  const seed = hash('hotel|' + city);
+  const stars = [
+    { label: '五星级', base: 900 },
+    { label: '四星级', base: 520 },
+    { label: '三星级', base: 300 },
+    { label: '经济型', base: 180 }
+  ];
+  const brands = ['国际大酒店', '中心假日酒店', '精品公寓', '青年旅舍', '希尔顿', '万豪', '如家', '汉庭'];
+  
+  const list = [];
+  stars.forEach((st, i) => {
+    const s = seed + i * 29;
+    const p = st.base + (s % 260);
+    const brand = brands[(s + i) % brands.length];
+    
+    const options = [
+      { name: '标准大床房', price: p, left: 5 + (s % 15) },
+      { name: '双床房', price: Math.round(p * 1.15), left: 3 + (s % 10) },
+      { name: '行政套房', price: Math.round(p * 2.2), left: 1 + (s % 4) }
+    ];
+    
+    list.push({
+      title: `${city}${brand}`,
+      subtitle: `${city} · ${st.label}`,
+      meta: `评分 ${(4 + (s % 10) / 10).toFixed(1)} · 含早餐`,
+      options
+    });
+  });
+  return list;
+}
+
+/* ---------- 门票生成器 ---------- */
+function genTickets(city) {
+  const seed = hash('ticket|' + city);
+  const spots = [
+    `${city}博物馆`, `${city}动物园`, `${city}海洋馆`,
+    `${city}古城景区`, `${city}植物园`, `${city}科技馆`,
+    `${city}美术馆`, `${city}欢乐谷`
+  ];
+  const list = [];
+  spots.forEach((sp, i) => {
+    const s = seed + i * 31;
+    const p = 40 + (s % 160);
+    const options = [
+      { name: '成人票', price: p, left: 100 + (s % 200) },
+      { name: '学生票', price: Math.round(p * 0.5), left: 50 + (s % 50) },
+      { name: '儿童票', price: Math.round(p * 0.3), left: 30 + (s % 30) }
+    ];
+    list.push({
+      title: sp,
+      subtitle: city,
+      meta: `开放 09:00 - 17:00 · 需提前预约`,
+      options
+    });
+  });
+  return list;
+}
+
+/* ---------- 演出生成器 ---------- */
+function genShows(city) {
+  const seed = hash('show|' + city);
+  const names = [
+    `${city}交响乐团新年音乐会`,
+    `话剧《暗恋桃花源》${city}站`,
+    `${city}流行音乐之夜`,
+    `${city}芭蕾舞团《天鹅湖》`,
+    `周杰伦世界巡回演唱会-${city}站`,
+    `脱口秀大会-${city}专场`
+  ];
+  const list = [];
+  names.forEach((nm, i) => {
+    const s = seed + i * 47;
+    const p = 180 + (s % 480);
+    const options = [
+      { name: 'A区票', price: p, left: 20 + (s % 30) },
+      { name: 'B区票', price: Math.round(p * 0.7), left: 30 + (s % 40) },
+      { name: 'C区票', price: Math.round(p * 0.45), left: 40 + (s % 50) }
+    ];
+    list.push({
+      title: nm,
+      subtitle: city,
+      meta: `19:30 开演 · 约 120 分钟`,
+      options
+    });
+  });
+  return list;
+}
+</script>
+<script>
+/* ==========================================================================
+   13. 城市/车站/机场选择器 (City Picker Component)
+   支持按城市、车站、机场三种模式选择，带搜索和区域分组。
+   ========================================================================== */
+function openCityPicker(initialValue, mode, onPick) {
+  // mode: 'station' (火车站) | 'airport' (机场) | 'city' (纯城市)
+  
+  // 根据模式决定数据源和分组
+  let dataMap, groups;
+  
+  if (mode === 'station') {
+    dataMap = ALL_CN_STATIONS;
+    groups = [
+      { label: '国内', cities: CN_CITIES }
+    ];
+  } else if (mode === 'airport') {
+    dataMap = ALL_AIRPORTS;
+    groups = [
+      { label: '国内', cities: Object.keys(ALL_AIRPORTS_CN) },
+      { label: '港澳台', cities: HKMO_CITIES },
+      { label: '国际', cities: INTL_CITIES }
+    ];
+  } else {
+    // city 模式，合并所有城市
+    dataMap = {};
+    DOMESTIC_CITIES.forEach(c => dataMap[c] = [c]);
+    HKMO_CITIES.forEach(c => dataMap[c] = [c]);
+    INTL_CITIES.forEach(c => dataMap[c] = [c]);
+    
+    groups = [
+      { label: '国内', cities: DOMESTIC_CITIES },
+      { label: '港澳台', cities: HKMO_CITIES },
+      { label: '国际', cities: INTL_CITIES }
+    ];
+  }
+
+  const wrap = document.createElement('div');
+  wrap.className = 'city-picker';
+  
+  const input = document.createElement('input');
+  input.className = 'city-picker-input';
+  input.value = initialValue || '';
+  input.readOnly = true;
+  input.placeholder = mode === 'station' ? '选择车站' : mode === 'airport' ? '选择机场' : '选择城市';
+  wrap.appendChild(input);
+
+  const panel = document.createElement('div');
+  panel.className = 'city-picker-panel';
+  panel.style.display = 'none';
+  
+  const search = document.createElement('input');
+  search.className = 'city-picker-search';
+  search.placeholder = '输入关键词搜索...';
+  panel.appendChild(search);
+
+  const listBox = document.createElement('div');
+  panel.appendChild(listBox);
+
+  // 重建列表（带搜索过滤）
+  function rebuild(keyword) {
+    listBox.innerHTML = '';
+    const kw = (keyword || '').trim().toLowerCase();
+    let hasMatch = false;
+
+    groups.forEach(g => {
+      // 找到匹配的城市
+      const matchedCities = g.cities.filter(city => {
+        if (!kw) return true;
+        if (city.toLowerCase().includes(kw)) return true;
+        const arr = dataMap[city] || [];
+        return arr.some(x => x.toLowerCase().includes(kw));
+      });
+
+      if (!matchedCities.length) return;
+
+      // 渲染分组标题
+      const gh = document.createElement('div');
+      gh.className = 'city-picker-group';
+      gh.textContent = g.label;
+      listBox.appendChild(gh);
+
+      // 渲染城市下的项目（车站、机场或城市本身）
+      matchedCities.forEach(city => {
+        const items = dataMap[city] || [city];
+        items.forEach(item => {
+          // 如果是搜索状态，且城市名和项目名都不包含关键词，则跳过
+          if (kw && !city.toLowerCase().includes(kw) && !item.toLowerCase().includes(kw)) return;
+          
+          hasMatch = true;
+          const it = document.createElement('div');
+          it.className = 'city-picker-item';
+          // 如果是车站/机场模式，显示名字，并在旁边用小字显示城市名
+          if (mode === 'station' || mode === 'airport') {
+            it.innerHTML = `<span>${item}</span> <span style="font-size:12px;color:#94a3b8;float:right;">${city}</span>`;
+          } else {
+            it.textContent = city;
+          }
+          
+          it.addEventListener('click', () => {
+            const val = (mode === 'city') ? city : item;
+            input.value = val;
+            panel.style.display = 'none';
+            if (onPick) onPick(val);
+          });
+          listBox.appendChild(it);
+        });
+      });
+    });
+
+    if (!hasMatch) {
+      const empty = document.createElement('div');
+      empty.style.padding = '16px';
+      empty.style.color = '#94a3b8';
+      empty.style.fontSize = '13px';
+      empty.style.textAlign = 'center';
+      empty.textContent = '没有匹配结果';
+      listBox.appendChild(empty);
+    }
+  }
+
+  // 事件绑定
+  search.addEventListener('input', (e) => rebuild(e.target.value));
+  
+  input.addEventListener('focus', () => {
+    panel.style.display = 'block';
+    rebuild(search.value);
+    setTimeout(() => search.focus(), 50);
+  });
+  
+  input.addEventListener('click', () => {
+    if (panel.style.display === 'none') {
+      panel.style.display = 'block';
+      rebuild(search.value);
+      setTimeout(() => search.focus(), 50);
+    } else {
+      panel.style.display = 'none';
+    }
+  });
+
+  // 点击外部关闭
+  const onDocClick = (e) => {
+    if (!wrap.contains(e.target)) {
+      panel.style.display = 'none';
+    }
+  };
+  document.addEventListener('click', onDocClick);
+
+  wrap.appendChild(panel);
+  return wrap;
+}
+
+
+/* ==========================================================================
+   14. 通用预订流程组件 (makeBookingApp)
+   用于火车票、机票、酒店、门票、演出的复用。
+   ========================================================================== */
+function makeBookingApp(cfg) {
+  return {
+    render() {
+      const root = document.createElement('div');
+      root.className = 'app';
+      
+      const passengers = Passengers.list();
+      
+      // 核心状态
+      const state = {
+        view: 'search', // search | list | detail | confirm | pay | done
+        from: cfg.searchType === 'route' 
+          ? (cfg.id === 'train' ? '北京' : cfg.id === 'flight' ? '北京首都国际机场' : '北京')
+          : '北京',
+        to: cfg.searchType === 'route'
+          ? (cfg.id === 'train' ? '上海' : cfg.id === 'flight' ? '上海虹桥国际机场' : '上海')
+          : '',
+        city: '北京',
+        date: todayStr(),
+        items: [],        // 搜索结果列表
+        selected: null,   // 选中的车次/航班/酒店等
+        option: null,     // 选中的舱位/座位/房型
+        passengerId: passengers[0]?.id || null,
+        order: null       // 生成的待支付订单对象
+      };
+
+      // 绘制主视图
+      function draw() {
+        root.innerHTML = '';
+        const views = {
+          search: renderSearch,
+          list: renderList,
+          detail: renderDetail,
+          confirm: renderConfirm,
+          // pay 和 done 在下一段实现
+        };
+        
+        if (views[state.view]) {
+          root.appendChild(views[state.view]());
+        } else {
+          root.innerHTML = `<h2>${cfg.title}</h2><div class="empty">页面开发中...</div>`;
+        }
+      }
+
+      // ==========================================
+      // 1. 搜索页
+      // ==========================================
+      function renderSearch() {
+        const el = document.createElement('div');
+        el.innerHTML = `<h2>${cfg.title}</h2>`;
+
+        if (cfg.searchType === 'route') {
+          // 交通类：出发地 + 目的地 + 日期
+          const fromField = document.createElement('div');
+          fromField.className = 'field';
+          fromField.innerHTML = '<label>出发地</label>';
+          fromField.appendChild(openCityPicker(state.from, cfg.pickerMode, (v) => { state.from = v; }));
+          el.appendChild(fromField);
+
+          const toField = document.createElement('div');
+          toField.className = 'field';
+          toField.innerHTML = '<label>目的地</label>';
+          toField.appendChild(openCityPicker(state.to, cfg.pickerMode, (v) => { state.to = v; }));
+          el.appendChild(toField);
+
+          const dateField = document.createElement('div');
+          dateField.className = 'field';
+          dateField.innerHTML = `<label>出发日期</label><input id="date-input" type="date" value="${state.date}">`;
+          el.appendChild(dateField);
+
+          const btn = document.createElement('button');
+          btn.className = 'btn block';
+          btn.innerHTML = `${icon('search', 18)} 搜索`;
+          btn.addEventListener('click', () => {
+            state.date = dateField.querySelector('#date-input').value || state.date;
+            if (state.from === state.to) {
+              Shell.notify('出发地和目的地不能相同');
+              return;
+            }
+            state.items = cfg.gen(state.from, state.to);
+            state.view = 'list';
+            draw();
+          });
+          el.appendChild(btn);
+
+        } else {
+          // 酒店/门票/演出类：城市 + 日期
+          const cityField = document.createElement('div');
+          cityField.className = 'field';
+          cityField.innerHTML = '<label>城市</label>';
+          cityField.appendChild(openCityPicker(state.city, 'city', (v) => { state.city = v; }));
+          el.appendChild(cityField);
+
+          const dateField = document.createElement('div');
+          dateField.className = 'field';
+          dateField.innerHTML = `<label>日期</label><input id="date-input" type="date" value="${state.date}">`;
+          el.appendChild(dateField);
+
+          const btn = document.createElement('button');
+          btn.className = 'btn block';
+          btn.innerHTML = `${icon('search', 18)} 搜索`;
+          btn.addEventListener('click', () => {
+            state.date = dateField.querySelector('#date-input').value || state.date;
+            state.items = cfg.gen(state.city);
+            state.view = 'list';
+            draw();
+          });
+          el.appendChild(btn);
+        }
+        return el;
+      }
+
+      // ==========================================
+      // 2. 列表页
+      // ==========================================
+      function renderList() {
+        const el = document.createElement('div');
+        
+        // 顶部导航
+        const header = document.createElement('div');
+        header.className = 'header-bar';
+        const subText = cfg.searchType === 'route' 
+          ? `${state.from} → ${state.to} · ${state.date}` 
+          : `${state.city} · ${state.date}`;
+          
+        header.innerHTML = `
+          <button class="btn secondary small" id="back-btn">${icon('arrow-left', 18)}</button>
+          <div>
+            <div class="title">${cfg.title}</div>
+            <div class="sub">${subText}</div>
+          </div>
+        `;
+        header.querySelector('#back-btn').addEventListener('click', () => { state.view = 'search'; draw(); });
+        el.appendChild(header);
+
+        if (!state.items.length) {
+          el.innerHTML += '<div class="empty">没有结果，请换个条件试试</div>';
+          return el;
+        }
+
+        // 渲染结果卡片
+        state.items.forEach(item => {
+          const card = document.createElement('div');
+          card.className = 'card clickable';
+          
+          // 火车/航班特有布局
+          if (item.dep && item.arr) {
+            card.innerHTML = `
+              <div class="card-title">
+                <span>${item.no} <span class="tag">${item.typeName || item.airline}</span></span>
+                <span class="price">¥${item.options[0].price} 起</span>
+              </div>
+              <div class="card-sub" style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
+                <div style="text-align:center;">
+                  <div style="font-size:18px;font-weight:600;color:var(--text-main)">${item.dep}</div>
+                  <div style="font-size:12px;color:var(--text-sub)">${item.from}</div>
+                </div>
+                <div style="flex:1; text-align:center; color:#cbd5e1; font-size:12px;">
+                  <div>${durText(item.dur)}</div>
+                  <div style="height:1px;background:#e2e8f0;margin:4px 10px;"></div>
+                  <div>直飞/直达</div>
+                </div>
+                <div style="text-align:center;">
+                  <div style="font-size:18px;font-weight:600;color:var(--text-main)">${item.arr}</div>
+                  <div style="font-size:12px;color:var(--text-sub)">${item.to}</div>
+                </div>
+              </div>
+            `;
+          } else {
+            // 酒店/门票/演出通用布局
+            card.innerHTML = `
+              <div class="card-title">
+                <span>${item.title}</span>
+                <span class="price">¥${item.options[0].price} 起</span>
+              </div>
+              <div class="card-sub">${item.subtitle}<br>${item.meta}</div>
+            `;
+          }
+
+          card.addEventListener('click', () => {
+            state.selected = item;
+            state.option = item.options[0];
+            state.view = 'detail';
+            draw();
+          });
+          el.appendChild(card);
+        });
+
+        return el;
+      }
+
+      // ==========================================
+      // 3. 详情页 (选择舱位/座位/房型 + 乘客)
+      // ==========================================
+      function renderDetail() {
+        const item = state.selected;
+        const el = document.createElement('div');
+        
+        const header = document.createElement('div');
+        header.className = 'header-bar';
+        header.innerHTML = `
+          <button class="btn secondary small" id="back-btn">${icon('arrow-left', 18)}</button>
+          <div>
+            <div class="title">${item.no || item.title}</div>
+            <div class="sub">${item.from ? item.from + ' → ' + item.to : item.subtitle}</div>
+          </div>
+        `;
+        header.querySelector('#back-btn').addEventListener('click', () => { state.view = 'list'; draw(); });
+        el.appendChild(header);
+
+        // 基础信息
+        const infoCard = document.createElement('div');
+        infoCard.className = 'card';
+        infoCard.innerHTML = `
+          <div class="card-title">
+            <span>${item.dep ? item.dep + ' - ' + item.arr : item.meta}</span>
+            ${item.dur ? `<span class="tag gray">${durText(item.dur)}</span>` : ''}
+          </div>
+        `;
+        el.appendChild(infoCard);
+
+        // 选项
+        const optTitle = document.createElement('h3');
+        optTitle.textContent = cfg.optionLabel || '选择规格';
+        el.appendChild(optTitle);
+
+        item.options.forEach(opt => {
+          const isSelected = state.option && state.option.name === opt.name;
+          const card = document.createElement('div');
+          card.className = `card clickable ${isSelected ? 'selected' : ''}`;
+          card.style.cssText = 'display:flex;justify-content:space-between;align-items:center;';
+          card.innerHTML = `
+            <div>
+              <div style="font-weight:600;font-size:15px;">${opt.name}</div>
+              <div class="card-sub">剩余 ${opt.left} 张</div>
+            </div>
+            <div class="price">¥${opt.price}</div>
+          `;
+          card.addEventListener('click', () => {
+            state.option = opt;
+            draw(); // 重新渲染以更新高亮
+          });
+          el.appendChild(card);
+        });
+
+        // 选择乘客
+        const pTitle = document.createElement('h3');
+        pTitle.textContent = '选择乘客';
+        el.appendChild(pTitle);
+
+        const ps = Passengers.list();
+        if (!ps.length) {
+          const tip = document.createElement('div');
+          tip.className = 'card';
+          tip.innerHTML = `<div class="card-sub" style="color:#dc2626;">还没有乘客信息，请先去「我的」App 添加。</div>`;
+          el.appendChild(tip);
+        } else {
+          const field = document.createElement('div');
+          field.className = 'field';
+          field.innerHTML = `
+            <select id="psg-select">
+              ${ps.map(p => `<option value="${p.id}" ${p.id === state.passengerId ? 'selected' : ''}>${p.name} · ${p.phone} · ${p.type}</option>`).join('')}
+            </select>
+          `;
+          field.querySelector('#psg-select').addEventListener('change', (e) => {
+            state.passengerId = e.target.value;
+          });
+          if (!state.passengerId) state.passengerId = ps[0].id;
+          el.appendChild(field);
+        }
+
+        // 下一步按钮
+        const nextBtn = document.createElement('button');
+        nextBtn.className = 'btn block';
+        nextBtn.style.marginTop = '16px';
+        nextBtn.innerHTML = `下一步 · ¥${state.option.price}`;
+        nextBtn.addEventListener('click', () => {
+          if (!state.passengerId) {
+            Shell.notify('请先添加并选择乘客');
+            return;
+          }
+          state.view = 'confirm';
+          draw();
+        });
+        el.appendChild(nextBtn);
+
+        return el;
+      }
+
+      // ==========================================
+      // 4. 确认订单页
+      // ==========================================
+      function renderConfirm() {
+        const item = state.selected;
+        const opt = state.option;
+        const ps = Passengers.list().find(p => p.id === state.passengerId);
+        
+        const el = document.createElement('div');
+        
+        const header = document.createElement('div');
+        header.className = 'header-bar';
+        header.innerHTML = `
+          <button class="btn secondary small" id="back-btn">${icon('arrow-left', 18)}</button>
+          <div class="title">确认订单</div>
+        `;
+        header.querySelector('#back-btn').addEventListener('click', () => { state.view = 'detail'; draw(); });
+        el.appendChild(header);
+
+        // 明细
+        el.innerHTML += `
+          <div class="card">
+            <div class="card-title">${item.no || item.title} · ${opt.name}</div>
+            <div class="card-sub">
+              ${item.from ? item.from + ' → ' + item.to : item.subtitle}<br>
+              ${item.dep ? item.dep + ' - ' + item.arr : ''}<br>
+              日期：${state.date}
+            </div>
+          </div>
+          <div class="card">
+            <div class="row"><span>乘客</span><span>${ps.name} · ${ps.phone}</span></div>
+            <div class="row"><span>证件号</span><span>${ps.idNo}</span></div>
+            <div class="divider"></div>
+            <div class="row"><span>票价</span><span>¥${opt.price}</span></div>
+            <div class="row"><span>服务费</span><span>¥5</span></div>
+            <div class="row"><span>合计</span><span class="price">¥${opt.price + 5}</span></div>
+          </div>
+          <button class="btn block" id="submit-btn" style="margin-top:16px;">提交订单</button>
+        `;
+
+        el.querySelector('#submit-btn').addEventListener('click', () => {
+          // 构建待支付订单对象
+          state.order = {
+            id: 'ORD' + Date.now(),
+            source: cfg.id,
+            sourceName: cfg.title,
+            icon: cfg.icon,
+            color: cfg.color,
+            title: `${item.no || item.title} · ${opt.name}`,
+            subtitle: item.from ? `${item.from} → ${item.to}` : item.subtitle,
+            meta: item.dep ? `${item.dep} - ${item.arr}` : '',
+            date: state.date,
+            amount: opt.price + 5, // 含服务费
+            status: 'pending',
+            passenger: { name: ps.name, phone: ps.phone, idNo: ps.idNo },
+            createdAt: Date.now()
+          };
+          state.view = 'pay';
+          draw();
+        });
+
+        return el;
+      }
+
+      // 初始绘制
+      draw();
+      return root;
+    }
+  };
+}
+</script>
+<script>
+/* ==========================================================================
+   14. 通用预订流程组件 (makeBookingApp) - 完整版覆盖
+   包含：搜索、列表、详情、确认、支付（钱包+银行卡）、成功
+   ========================================================================== */
+function makeBookingApp(cfg) {
+  return {
+    render() {
+      const root = document.createElement('div');
+      root.className = 'app';
+      
+      const passengers = Passengers.list();
+      
+      // 核心状态
+      const state = {
+        view: 'search',
+        from: cfg.searchType === 'route' 
+          ? (cfg.id === 'train' ? '北京' : cfg.id === 'flight' ? '北京首都国际机场' : '北京')
+          : '北京',
+        to: cfg.searchType === 'route'
+          ? (cfg.id === 'train' ? '上海' : cfg.id === 'flight' ? '上海虹桥国际机场' : '上海')
+          : '',
+        city: '北京',
+        date: todayStr(),
+        items: [],
+        selected: null,
+        option: null,
+        passengerId: passengers[0]?.id || null,
+        order: null,
+        payMethod: 'wallet', // 'wallet' 或 银行卡ID
+        isPaying: false
+      };
+
+      // 绘制主视图
+      function draw() {
+        root.innerHTML = '';
+        const views = {
+          search: renderSearch,
+          list: renderList,
+          detail: renderDetail,
+          confirm: renderConfirm,
+          pay: renderPay,
+          done: renderDone
+        };
+        
+        if (views[state.view]) {
+          root.appendChild(views[state.view]());
+        } else {
+          root.innerHTML = `<h2>${cfg.title}</h2><div class="empty">页面开发中...</div>`;
+        }
+      }
+
+      /* ---------- 1. 搜索页 ---------- */
+      function renderSearch() {
+        const el = document.createElement('div');
+        el.innerHTML = `<h2>${cfg.title}</h2>`;
+
+        if (cfg.searchType === 'route') {
+          const fromField = document.createElement('div');
+          fromField.className = 'field';
+          fromField.innerHTML = '<label>出发地</label>';
+          fromField.appendChild(openCityPicker(state.from, cfg.pickerMode, (v) => { state.from = v; }));
+          el.appendChild(fromField);
+
+          const toField = document.createElement('div');
+          toField.className = 'field';
+          toField.innerHTML = '<label>目的地</label>';
+          toField.appendChild(openCityPicker(state.to, cfg.pickerMode, (v) => { state.to = v; }));
+          el.appendChild(toField);
+
+          const dateField = document.createElement('div');
+          dateField.className = 'field';
+          dateField.innerHTML = `<label>出发日期</label><input id="date-input" type="date" value="${state.date}">`;
+          el.appendChild(dateField);
+
+          const btn = document.createElement('button');
+          btn.className = 'btn block';
+          btn.innerHTML = `${icon('search', 18)} 搜索`;
+          btn.addEventListener('click', () => {
+            state.date = dateField.querySelector('#date-input').value || state.date;
+            if (state.from === state.to) {
+              Shell.notify('出发地和目的地不能相同');
+              return;
+            }
+            state.items = cfg.gen(state.from, state.to);
+            state.view = 'list';
+            draw();
+          });
+          el.appendChild(btn);
+
+        } else {
+          const cityField = document.createElement('div');
+          cityField.className = 'field';
+          cityField.innerHTML = '<label>城市</label>';
+          cityField.appendChild(openCityPicker(state.city, 'city', (v) => { state.city = v; }));
+          el.appendChild(cityField);
+
+          const dateField = document.createElement('div');
+          dateField.className = 'field';
+          dateField.innerHTML = `<label>日期</label><input id="date-input" type="date" value="${state.date}">`;
+          el.appendChild(dateField);
+
+          const btn = document.createElement('button');
+          btn.className = 'btn block';
+          btn.innerHTML = `${icon('search', 18)} 搜索`;
+          btn.addEventListener('click', () => {
+            state.date = dateField.querySelector('#date-input').value || state.date;
+            state.items = cfg.gen(state.city);
+            state.view = 'list';
+            draw();
+          });
+          el.appendChild(btn);
+        }
+        return el;
+      }
+
+      /* ---------- 2. 列表页 ---------- */
+      function renderList() {
+        const el = document.createElement('div');
+        const header = document.createElement('div');
+        header.className = 'header-bar';
+        const subText = cfg.searchType === 'route' 
+          ? `${state.from} → ${state.to} · ${state.date}` 
+          : `${state.city} · ${state.date}`;
+          
+        header.innerHTML = `
+          <button class="btn secondary small" id="back-btn">${icon('arrow-left', 18)}</button>
+          <div>
+            <div class="title">${cfg.title}</div>
+            <div class="sub">${subText}</div>
+          </div>
+        `;
+        header.querySelector('#back-btn').addEventListener('click', () => { state.view = 'search'; draw(); });
+        el.appendChild(header);
+
+        if (!state.items.length) {
+          el.innerHTML += '<div class="empty">没有结果，请换个条件试试</div>';
+          return el;
+        }
+
+        state.items.forEach(item => {
+          const card = document.createElement('div');
+          card.className = 'card clickable';
+          
+          if (item.dep && item.arr) {
+            card.innerHTML = `
+              <div class="card-title">
+                <span>${item.no} <span class="tag">${item.typeName || item.airline}</span></span>
+                <span class="price">¥${item.options[0].price} 起</span>
+              </div>
+              <div class="card-sub" style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
+                <div style="text-align:center;">
+                  <div style="font-size:18px;font-weight:600;color:var(--text-main)">${item.dep}</div>
+                  <div style="font-size:12px;color:var(--text-sub)">${item.from}</div>
+                </div>
+                <div style="flex:1; text-align:center; color:#cbd5e1; font-size:12px;">
+                  <div>${durText(item.dur)}</div>
+                  <div style="height:1px;background:#e2e8f0;margin:4px 10px;"></div>
+                  <div>直飞/直达</div>
+                </div>
+                <div style="text-align:center;">
+                  <div style="font-size:18px;font-weight:600;color:var(--text-main)">${item.arr}</div>
+                  <div style="font-size:12px;color:var(--text-sub)">${item.to}</div>
+                </div>
+              </div>
+            `;
+          } else {
+            card.innerHTML = `
+              <div class="card-title">
+                <span>${item.title}</span>
+                <span class="price">¥${item.options[0].price} 起</span>
+              </div>
+              <div class="card-sub">${item.subtitle}<br>${item.meta}</div>
+            `;
+          }
+
+          card.addEventListener('click', () => {
+            state.selected = item;
+            state.option = item.options[0];
+            state.view = 'detail';
+            draw();
+          });
+          el.appendChild(card);
+        });
+
+        return el;
+      }
+
+      /* ---------- 3. 详情页 ---------- */
+      function renderDetail() {
+        const item = state.selected;
+        const el = document.createElement('div');
+        
+        const header = document.createElement('div');
+        header.className = 'header-bar';
+        header.innerHTML = `
+          <button class="btn secondary small" id="back-btn">${icon('arrow-left', 18)}</button>
+          <div>
+            <div class="title">${item.no || item.title}</div>
+            <div class="sub">${item.from ? item.from + ' → ' + item.to : item.subtitle}</div>
+          </div>
+        `;
+        header.querySelector('#back-btn').addEventListener('click', () => { state.view = 'list'; draw(); });
+        el.appendChild(header);
+
+        const infoCard = document.createElement('div');
+        infoCard.className = 'card';
+        infoCard.innerHTML = `
+          <div class="card-title">
+            <span>${item.dep ? item.dep + ' - ' + item.arr : item.meta}</span>
+            ${item.dur ? `<span class="tag gray">${durText(item.dur)}</span>` : ''}
+          </div>
+        `;
+        el.appendChild(infoCard);
+
+        const optTitle = document.createElement('h3');
+        optTitle.textContent = cfg.optionLabel || '选择规格';
+        el.appendChild(optTitle);
+
+        item.options.forEach(opt => {
+          const isSelected = state.option && state.option.name === opt.name;
+          const card = document.createElement('div');
+          card.className = `card clickable ${isSelected ? 'selected' : ''}`;
+          card.style.cssText = 'display:flex;justify-content:space-between;align-items:center;';
+          card.innerHTML = `
+            <div>
+              <div style="font-weight:600;font-size:15px;">${opt.name}</div>
+              <div class="card-sub">剩余 ${opt.left} 张</div>
+            </div>
+            <div class="price">¥${opt.price}</div>
+          `;
+          card.addEventListener('click', () => {
+            state.option = opt;
+            draw();
+          });
+          el.appendChild(card);
+        });
+
+        const pTitle = document.createElement('h3');
+        pTitle.textContent = '选择乘客';
+        el.appendChild(pTitle);
+
+        const ps = Passengers.list();
+        if (!ps.length) {
+          const tip = document.createElement('div');
+          tip.className = 'card';
+          tip.innerHTML = `<div class="card-sub" style="color:#dc2626;">还没有乘客信息，请先去「我的」App 添加。</div>`;
+          el.appendChild(tip);
+        } else {
+          const field = document.createElement('div');
+          field.className = 'field';
+          field.innerHTML = `
+            <select id="psg-select">
+              ${ps.map(p => `<option value="${p.id}" ${p.id === state.passengerId ? 'selected' : ''}>${p.name} · ${p.phone} · ${p.type}</option>`).join('')}
+            </select>
+          `;
+          field.querySelector('#psg-select').addEventListener('change', (e) => {
+            state.passengerId = e.target.value;
+          });
+          if (!state.passengerId) state.passengerId = ps[0].id;
+          el.appendChild(field);
+        }
+
+        const nextBtn = document.createElement('button');
+        nextBtn.className = 'btn block';
+        nextBtn.style.marginTop = '16px';
+        nextBtn.innerHTML = `下一步 · ¥${state.option.price}`;
+        nextBtn.addEventListener('click', () => {
+          if (!state.passengerId) {
+            Shell.notify('请先添加并选择乘客');
+            return;
+          }
+          state.view = 'confirm';
+          draw();
+        });
+        el.appendChild(nextBtn);
+
+        return el;
+      }
+
+      /* ---------- 4. 确认订单页 ---------- */
+      function renderConfirm() {
+        const item = state.selected;
+        const opt = state.option;
+        const ps = Passengers.list().find(p => p.id === state.passengerId);
+        
+        const el = document.createElement('div');
+        const header = document.createElement('div');
+        header.className = 'header-bar';
+        header.innerHTML = `
+          <button class="btn secondary small" id="back-btn">${icon('arrow-left', 18)}</button>
+          <div class="title">确认订单</div>
+        `;
+        header.querySelector('#back-btn').addEventListener('click', () => { state.view = 'detail'; draw(); });
+        el.appendChild(header);
+
+        el.innerHTML += `
+          <div class="card">
+            <div class="card-title">${item.no || item.title} · ${opt.name}</div>
+            <div class="card-sub">
+              ${item.from ? item.from + ' → ' + item.to : item.subtitle}<br>
+              ${item.dep ? item.dep + ' - ' + item.arr : ''}<br>
+              日期：${state.date}
+            </div>
+          </div>
+          <div class="card">
+            <div class="row"><span>乘客</span><span>${ps.name} · ${ps.phone}</span></div>
+            <div class="row"><span>证件号</span><span>${ps.idNo}</span></div>
+            <div class="divider"></div>
+            <div class="row"><span>票价</span><span>¥${opt.price}</span></div>
+            <div class="row"><span>服务费</span><span>¥5</span></div>
+            <div class="row"><span>合计</span><span class="price">¥${opt.price + 5}</span></div>
+          </div>
+          <button class="btn block" id="submit-btn" style="margin-top:16px;">提交订单</button>
+        `;
+
+        el.querySelector('#submit-btn').addEventListener('click', () => {
+          state.order = {
+            id: 'ORD' + Date.now(),
+            source: cfg.id,
+            sourceName: cfg.title,
+            icon: cfg.icon,
+            color: cfg.color,
+            title: `${item.no || item.title} · ${opt.name}`,
+            subtitle: item.from ? `${item.from} → ${item.to}` : item.subtitle,
+            meta: item.dep ? `${item.dep} - ${item.arr}` : '',
+            date: state.date,
+            amount: opt.price + 5,
+            status: 'pending',
+            passenger: { name: ps.name, phone: ps.phone, idNo: ps.idNo },
+            createdAt: Date.now()
+          };
+          state.view = 'pay';
+          draw();
+        });
+
+        return el;
+      }
+
+      /* ---------- 5. 支付页（钱包 / 银行卡） ---------- */
+      function renderPay() {
+        const amount = state.order.amount;
+        const el = document.createElement('div');
+        
+        const header = document.createElement('div');
+        header.className = 'header-bar';
+        header.innerHTML = `
+          <button class="btn secondary small" id="back-btn">${icon('arrow-left', 18)}</button>
+          <div class="title">收银台</div>
+        `;
+        header.querySelector('#back-btn').addEventListener('click', () => {
+          if (state.isPaying) return;
+          state.view = 'confirm';
+          draw();
+        });
+        el.appendChild(header);
+
+        // 金额展示
+        el.innerHTML += `
+          <div class="card" style="text-align:center;padding:30px 16px;background:linear-gradient(135deg,#eff6ff,#dbeafe);border:none;">
+            <div style="font-size:36px;font-weight:700;color:var(--primary);margin-bottom:8px;">¥${amount}</div>
+            <div style="font-size:14px;color:var(--text-sub);">订单金额</div>
+          </div>
+          <h3>选择支付方式</h3>
+        `;
+
+        // 支付方式容器
+        const methodsBox = document.createElement('div');
+
+        // 1. 钱包余额支付
+        const walletBal = Wallet.getBalance();
+        const walletEnough = walletBal >= amount;
+        const walletSelected = state.payMethod === 'wallet';
+        
+        const walletCard = document.createElement('div');
+        walletCard.className = `card clickable ${walletSelected ? 'selected' : ''}`;
+        walletCard.style.cssText = `display:flex;justify-content:space-between;align-items:center;${!walletEnough ? 'opacity:0.5;pointer-events:none;' : ''}`;
+        walletCard.innerHTML = `
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div style="color:${walletSelected ? 'var(--primary)' : '#64748b'}">${icon('wallet', 24)}</div>
+            <div>
+              <div style="font-weight:600;font-size:15px;">钱包余额</div>
+              <div class="card-sub">余额 ¥${walletBal} ${!walletEnough ? '(不足)' : ''}</div>
+            </div>
+          </div>
+          <div style="width:20px;height:20px;border-radius:50%;border:2px solid ${walletSelected ? 'var(--primary)' : '#cbd5e1'};background:${walletSelected ? 'var(--primary)' : 'transparent'};display:grid;place-items:center;">
+            ${walletSelected ? `<div style="width:8px;height:8px;background:#fff;border-radius:50%;"></div>` : ''}
+          </div>
+        `;
+        if (walletEnough) {
+          walletCard.addEventListener('click', () => {
+            if (state.isPaying) return;
+            state.payMethod = 'wallet';
+            draw();
+          });
+        }
+        methodsBox.appendChild(walletCard);
+
+        // 2. 银行卡列表
+        const cards = BankCards.list();
+        cards.forEach(card => {
+          const cardEnough = card.balance >= amount;
+          const cardSelected = state.payMethod === card.id;
+          
+          const cEl = document.createElement('div');
+          cEl.className = `card clickable ${cardSelected ? 'selected' : ''}`;
+          cEl.style.cssText = `display:flex;justify-content:space-between;align-items:center;${!cardEnough ? 'opacity:0.5;pointer-events:none;' : ''}`;
+          
+          // 运营商图标文字
+          const networkText = { visa: 'VISA', mastercard: 'MasterCard', unionpay: '银联', other: '其他' }[card.network] || '其他';
+          const maskNo = card.cardNo.replace(/.(?=.{4})/g, '*');
+          
+          cEl.innerHTML = `
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div style="color:${cardSelected ? 'var(--primary)' : '#64748b'}">${icon('credit-card', 24)}</div>
+              <div>
+                <div style="font-weight:600;font-size:15px;">${card.bankName} <span style="font-size:11px;color:#fff;background:#475569;padding:1px 6px;border-radius:4px;margin-left:4px;">${networkText}</span></div>
+                <div class="card-sub">${maskNo} · 余额 ¥${card.balance} ${!cardEnough ? '(不足)' : ''}</div>
+              </div>
+            </div>
+            <div style="width:20px;height:20px;border-radius:50%;border:2px solid ${cardSelected ? 'var(--primary)' : '#cbd5e1'};background:${cardSelected ? 'var(--primary)' : 'transparent'};display:grid;place-items:center;">
+              ${cardSelected ? `<div style="width:8px;height:8px;background:#fff;border-radius:50%;"></div>` : ''}
+            </div>
+          `;
+          
+          if (cardEnough) {
+            cEl.addEventListener('click', () => {
+              if (state.isPaying) return;
+              state.payMethod = card.id;
+              draw();
+            });
+          }
+          methodsBox.appendChild(cEl);
+        });
+
+        el.appendChild(methodsBox);
+
+        // 支付按钮
+        const payBtn = document.createElement('button');
+        payBtn.className = 'btn block';
+        payBtn.style.marginTop = '20px';
+        payBtn.textContent = state.isPaying ? '正在处理...' : `确认支付 ¥${amount}`;
+        if (state.isPaying) payBtn.disabled = true;
+        
+        payBtn.addEventListener('click', async () => {
+          if (state.isPaying) return;
+          state.isPaying = true;
+          payBtn.textContent = '正在处理...';
+          payBtn.disabled = true;
+
+          // 模拟网络延迟
+          await new Promise(r => setTimeout(r, 800));
+
+          let result;
+          if (state.payMethod === 'wallet') {
+            result = Wallet.pay(amount);
+          } else {
+            result = BankCards.pay(state.payMethod, amount);
+          }
+
+          if (!result.ok) {
+            Shell.notify(result.reason);
+            state.isPaying = false;
+            payBtn.textContent = `确认支付 ¥${amount}`;
+            payBtn.disabled = false;
+            return;
+          }
+
+          // 支付成功
+          state.order.status = 'issued';
+          Orders.add(state.order);
+          state.isPaying = false;
+          state.view = 'done';
+          draw();
+          Shell.notify('支付成功');
+        });
+        
+        el.appendChild(payBtn);
+
+        return el;
+      }
+
+      /* ---------- 6. 成功页 ---------- */
+      function renderDone() {
+        const el = document.createElement('div');
+        el.style.cssText = 'text-align:center;padding:60px 20px;';
+        
+        el.innerHTML = `
+          <div style="color:#16a34a;margin-bottom:20px;display:flex;justify-content:center;">${icon('check', 72)}</div>
+          <h2 style="justify-content:center;color:#0f172a;">预订成功</h2>
+          <div class="card-sub" style="margin-bottom:30px;font-size:15px;">${state.order.title}</div>
+          
+          <div class="card" style="text-align:left;">
+            <div class="row"><span>订单号</span><span class="muted">${state.order.id}</span></div>
+            <div class="row"><span>实付金额</span><span class="price">¥${state.order.amount}</span></div>
+          </div>
+          
+          <div class="btn-row" style="margin-top:20px;">
+            <button class="btn secondary" id="close-btn">返回首页</button>
+            <button class="btn" id="view-order-btn">查看订单</button>
+          </div>
+        `;
+
+        el.querySelector('#close-btn').addEventListener('click', () => {
+          Shell.closeApp(cfg.id);
+        });
+        
+        el.querySelector('#view-order-btn').addEventListener('click', () => {
+          Shell.openApp('orders');
+          // 如果是在手机端，可以考虑关闭当前 App 页面（但用 openApp 压栈也是合理的）
+        });
+
+        return el;
+      }
+
+      draw();
+      return root;
+    }
+  };
+}
+</script>
+<script>
+/* ==========================================================================
+   15. WalletOS (钱包 App)
+   包含余额、我的卡包、添加/编辑银行卡、云端同步入口
+   ========================================================================== */
+window.WalletApp = {
+  render() {
+    const root = document.createElement('div');
+    root.className = 'app';
+
+    const state = {
+      view: 'home', // home | cards | add_card | edit_card
+      editingCardId: null
+    };
+
+    function draw() {
+      root.innerHTML = '';
+      const views = {
+        home: renderHome,
+        cards: renderCards,
+        add_card: () => renderCardForm(null),
+        edit_card: () => renderCardForm(state.editingCardId)
+      };
+      root.appendChild(views[state.view]());
+    }
+
+    /* ---------- 1. 钱包首页 ---------- */
+    function renderHome() {
+      const el = document.createElement('div');
+      const balance = Wallet.getBalance();
+      const cards = BankCards.list();
+
+      el.innerHTML = `
+        <h2>WalletOS</h2>
+        <div class="card" style="text-align:center;padding:30px 20px;background:linear-gradient(135deg,#1e3a8a,#3b82f6);color:#fff;border:none;border-radius:16px;box-shadow:0 10px 30px rgba(37,99,235,0.3);">
+          <div style="font-size:14px;opacity:0.8;margin-bottom:6px;">钱包总余额</div>
+          <div style="font-size:40px;font-weight:700;">¥${balance.toFixed(2)}</div>
+          <div style="margin-top:16px;display:flex;gap:10px;justify-content:center;">
+            <button class="btn small" style="background:rgba(255,255,255,0.2);color:#fff;border:1px solid rgba(255,255,255,0.4);" id="recharge-btn">${icon('plus', 14)} 充值</button>
+          </div>
+        </div>
+
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:24px;margin-bottom:12px;">
+          <h3 style="margin:0;">我的卡包 (${cards.length})</h3>
+          <button class="btn small secondary" id="view-cards-btn">管理卡包 ${icon('chevron-right', 14)}</button>
+        </div>
+        <div id="home-cards-preview" style="display:flex;overflow-x:auto;gap:12px;padding-bottom:10px;"></div>
+
+        <div class="card" style="margin-top:24px;">
+          <div class="card-title">${icon('cloud', 18)} 云同步</div>
+          <div class="card-sub">当前同步码：${Store.get('sync_code', '未设置')}</div>
+          <button class="btn small secondary" style="margin-top:10px;" id="settings-sync-btn">去设置</button>
+        </div>
+      `;
+
+      // 充值功能
+      el.querySelector('#recharge-btn').addEventListener('click', () => {
+        Wallet.setBalance(balance + 1000);
+        Shell.notify('充值成功 +¥1000');
+        draw();
+      });
+
+      // 进入卡包管理
+      el.querySelector('#view-cards-btn').addEventListener('click', () => {
+        state.view = 'cards';
+        draw();
+      });
+
+      // 去设置同步
+      el.querySelector('#settings-sync-btn').addEventListener('click', () => {
+        Shell.openApp('settings');
+      });
+
+      // 首页卡包预览（只展示前两张）
+      const previewBox = el.querySelector('#home-cards-preview');
+      if (cards.length === 0) {
+        previewBox.innerHTML = `<div class="card-sub" style="color:#94a3b8;padding:10px;">暂无银行卡，点击“管理卡包”添加。</div>`;
+      } else {
+        cards.slice(0, 2).forEach(card => {
+          const cardEl = document.createElement('div');
+          cardEl.style.cssText = 'min-width:200px;flex-shrink:0;';
+          const networkText = { visa: 'VISA', mastercard: 'MasterCard', unionpay: '银联', other: '其他' }[card.network] || '其他';
+          const maskNo = card.cardNo.replace(/.(?=.{4})/g, '*');
+          cardEl.innerHTML = `
+            <div class="bank-card ${card.bgClass}" style="height:120px;padding:14px;border-radius:12px;">
+              <div class="bank-card-top">
+                <span class="bank-card-bank" style="font-size:13px;">${card.bankName}</span>
+                <span class="bank-card-network" style="font-size:10px;">${networkText}</span>
+              </div>
+              <div class="bank-card-number" style="font-size:14px;margin-top:8px;">${maskNo}</div>
+              <div class="bank-card-bottom" style="margin-top:8px;">
+                <div><div class="label" style="font-size:8px;">余额</div><div class="value" style="font-size:12px;">¥${card.balance}</div></div>
+              </div>
+            </div>
+          `;
+          previewBox.appendChild(cardEl);
+        });
+      }
+
+      return el;
+    }
+
+    /* ---------- 2. 卡包管理列表 ---------- */
+    function renderCards() {
+      const el = document.createElement('div');
+      const cards = BankCards.list();
+
+      const header = document.createElement('div');
+      header.className = 'header-bar';
+      header.innerHTML = `
+        <button class="btn secondary small" id="back-btn">${icon('arrow-left', 18)}</button>
+        <div class="title">我的卡包</div>
+      `;
+      header.querySelector('#back-btn').addEventListener('click', () => { state.view = 'home'; draw(); });
+      el.appendChild(header);
+
+      if (cards.length === 0) {
+        el.innerHTML += `<div class="empty">${icon('credit-card', 48)}<br>还没有添加银行卡</div>`;
+      } else {
+        cards.forEach(card => {
+          const networkText = { visa: 'VISA', mastercard: 'MasterCard', unionpay: '银联', other: '其他' }[card.network] || '其他';
+          const maskNo = card.cardNo.replace(/.(?=.{4})/g, '*');
+          
+          const item = document.createElement('div');
+          item.className = 'bank-card-item';
+          item.innerHTML = `
+            <div class="bank-card-item-left">
+              <div class="bank-card-icon">${icon('credit-card', 22)}</div>
+              <div>
+                <div class="bank-card-item-title">${card.bankName} <span style="font-size:11px;background:#e2e8f0;padding:2px 6px;border-radius:4px;margin-left:4px;">${networkText}</span></div>
+                <div class="bank-card-item-sub">${maskNo}</div>
+              </div>
+            </div>
+            <div style="text-align:right;">
+              <div class="price" style="font-size:16px;margin-bottom:4px;">¥${card.balance}</div>
+              <div style="font-size:12px;color:var(--text-sub);">点击编辑</div>
+            </div>
+          `;
+          item.addEventListener('click', () => {
+            state.editingCardId = card.id;
+            state.view = 'edit_card';
+            draw();
+          });
+          el.appendChild(item);
+        });
+      }
+
+      // 添加按钮
+      const addBtn = document.createElement('button');
+      addBtn.className = 'btn block';
+      addBtn.style.marginTop = '16px';
+      addBtn.innerHTML = `${icon('plus', 18)} 添加新银行卡`;
+      addBtn.addEventListener('click', () => {
+        state.view = 'add_card';
+        draw();
+      });
+      el.appendChild(addBtn);
+
+      return el;
+    }
+
+    /* ---------- 3. 添加/编辑银行卡表单 ---------- */
+    function renderCardForm(cardId) {
+      const isEdit = !!cardId;
+      const existingCard = isEdit ? BankCards.get(cardId) : null;
+      
+      if (isEdit && !existingCard) {
+        state.view = 'cards';
+        draw();
+        return document.createElement('div');
+      }
+
+      const el = document.createElement('div');
+      
+      const header = document.createElement('div');
+      header.className = 'header-bar';
+      header.innerHTML = `
+        <button class="btn secondary small" id="back-btn">${icon('arrow-left', 18)}</button>
+        <div class="title">${isEdit ? '编辑银行卡' : '添加银行卡'}</div>
+      `;
+      header.querySelector('#back-btn').addEventListener('click', () => { 
+        state.view = 'cards'; 
+        draw(); 
+      });
+      el.appendChild(header);
+
+      // 银行列表
+      const banks = ['工商银行', '建设银行', '农业银行', '中国银行', '交通银行', '招商银行', '浦发银行', '民生银行', '兴业银行', '中信银行', '光大银行', '平安银行', '广发银行', '华夏银行', '邮储银行', '其他银行'];
+
+      el.innerHTML += `
+        <div class="field">
+          <label>银行名称</label>
+          <select id="bank-name">
+            <option value="">请选择银行</option>
+            ${banks.map(b => `<option value="${b}" ${existingCard && existingCard.bankName === b ? 'selected' : ''}>${b}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field">
+          <label>银行卡号</label>
+          <input id="card-no" type="text" placeholder="请输入16-19位卡号" value="${existingCard ? existingCard.cardNo : ''}" maxlength="19">
+        </div>
+        <div class="field">
+          <label>运营商</label>
+          <select id="network">
+            <option value="unionpay" ${existingCard && existingCard.network === 'unionpay' ? 'selected' : ''}>UnionPay (银联)</option>
+            <option value="visa" ${existingCard && existingCard.network === 'visa' ? 'selected' : ''}>Visa</option>
+            <option value="mastercard" ${existingCard && existingCard.network === 'mastercard' ? 'selected' : ''}>MasterCard (万事达)</option>
+            <option value="other" ${existingCard && existingCard.network === 'other' ? 'selected' : ''}>其他</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>卡内金额 (¥)</label>
+          <input id="balance" type="number" placeholder="请输入余额" value="${existingCard ? existingCard.balance : '1000'}" min="0" step="100">
+        </div>
+        
+        <div id="preview-box" style="margin:20px 0;"></div>
+
+        <button class="btn block" id="save-btn" style="margin-top:10px;">${isEdit ? '保存修改' : '确认添加'}</button>
+        ${isEdit ? `<button class="btn block danger" id="delete-btn" style="margin-top:10px;">删除此卡</button>` : ''}
+      `;
+
+      // 实时预览卡面
+      const previewBox = el.querySelector('#preview-box');
+      const bankSel = el.querySelector('#bank-name');
+      const noInput = el.querySelector('#card-no');
+      const netSel = el.querySelector('#network');
+      const balInput = el.querySelector('#balance');
+
+      function updatePreview() {
+        const bank = bankSel.value || '银行名称';
+        const no = noInput.value || '**** **** **** ****';
+        const net = netSel.value;
+        const bal = balInput.value || '0';
+        const netText = { visa: 'VISA', mastercard: 'MasterCard', unionpay: '银联', other: '其他' }[net] || '其他';
+        const bgClass = existingCard ? existingCard.bgClass : 'bg-0';
+        const maskNo = no.replace(/.(?=.{4})/g, '*');
+
+        previewBox.innerHTML = `
+          <div class="bank-card ${bgClass}" style="height:160px;">
+            <div class="bank-card-top">
+              <span class="bank-card-bank">${bank}</span>
+              <span class="bank-card-network">${netText}</span>
+            </div>
+            <div class="bank-card-chip"></div>
+            <div class="bank-card-number">${maskNo}</div>
+            <div class="bank-card-bottom">
+              <div><div class="label">余额</div><div class="value">¥${bal}</div></div>
+            </div>
+          </div>
+        `;
+      }
+
+      bankSel.addEventListener('change', updatePreview);
+      noInput.addEventListener('input', updatePreview);
+      netSel.addEventListener('change', updatePreview);
+      balInput.addEventListener('input', updatePreview);
+      updatePreview();
+
+      // 保存
+      el.querySelector('#save-btn').addEventListener('click', () => {
+        const bankName = bankSel.value;
+        const cardNo = noInput.value.replace(/\s/g, '');
+        const network = netSel.value;
+        const balance = parseFloat(balInput.value) || 0;
+
+        if (!bankName) { Shell.notify('请选择银行'); return; }
+        if (cardNo.length < 12) { Shell.notify('请输入正确的卡号'); return; }
+
+        if (isEdit) {
+          BankCards.update(cardId, { bankName, cardNo, network, balance });
+          Shell.notify('修改成功');
+        } else {
+          BankCards.add({ bankName, cardNo, network, balance });
+          Shell.notify('添加成功');
+        }
+        state.view = 'cards';
+        draw();
+      });
+
+      // 删除
+      if (isEdit) {
+        el.querySelector('#delete-btn').addEventListener('click', () => {
+          if (confirm(`确定删除尾号 ${existingCard.cardNo.slice(-4)} 的银行卡吗？`)) {
+            BankCards.remove(cardId);
+            Shell.notify('已删除');
+            state.view = 'cards';
+            draw();
+          }
+        });
+      }
+
+      return el;
+    }
+
+    draw();
+    return root;
+  }
+};
+</script>
+<script>
+/* ==========================================================================
+   16. App 实例化与配置 (App Instances)
+   使用通用的 makeBookingApp 生成各个业务 App
+   ========================================================================== */
+
+// 1. RailWayPass (火车票)
+window.RailWayPassApp = makeBookingApp({
+  id: 'train',
+  title: 'RailWayPass',
+  icon: 'train-front',
+  color: '#2563eb',
+  searchType: 'route',
+  pickerMode: 'station',
+  optionLabel: '选择座位',
+  gen: genTrains
+});
+
+// 2. FLYTrip (机票)
+window.FLYTripApp = makeBookingApp({
+  id: 'flight',
+  title: 'FLYTrip',
+  icon: 'plane',
+  color: '#0891b2',
+  searchType: 'route',
+  pickerMode: 'airport',
+  optionLabel: '选择舱位',
+  gen: genFlights
+});
+
+// 3. Booking.com (酒店)
+window.BookingApp = makeBookingApp({
+  id: 'hotel',
+  title: 'Booking.com',
+  icon: 'hotel',
+  color: '#9333ea',
+  searchType: 'place',
+  pickerMode: 'city',
+  optionLabel: '选择房型',
+  gen: genHotels
+});
+
+// 4. Ticket (门票)
+window.TicketApp = makeBookingApp({
+  id: 'ticket',
+  title: '门票',
+  icon: 'ticket',
+  color: '#ea580c',
+  searchType: 'place',
+  pickerMode: 'city',
+  optionLabel: '选择票种',
+  gen: genTickets
+});
+
+// 5. Show (演出)
+window.ShowApp = makeBookingApp({
+  id: 'show',
+  title: '演出',
+  icon: 'music',
+  color: '#db2777',
+  searchType: 'place',
+  pickerMode: 'city',
+  optionLabel: '选择票档',
+  gen: genShows
+});
+
+
+/* ==========================================================================
+   17. 订单中心 App (Orders App)
+   ========================================================================== */
+window.OrdersApp = {
+  render() {
+    const el = document.createElement('div');
+    el.className = 'app';
+    const list = Orders.list();
+    
+    el.innerHTML = `<h2>订单中心</h2>`;
+
+    if (!list.length) {
+      el.innerHTML += `
+        <div class="empty">
+          ${icon('clipboard-list', 48)}<br>
+          还没有订单，去订一张吧
+        </div>
+      `;
+      return el;
+    }
+
+    // 按状态分类过滤器（可扩展）
+    const filterBar = document.createElement('div');
+    filterBar.style.cssText = 'display:flex;gap:8px;margin-bottom:16px;overflow-x:auto;padding-bottom:4px;';
+    ['全部', '已出票', '已取消'].forEach(f => {
+      const btn = document.createElement('button');
+      btn.className = 'btn small secondary';
+      btn.style.whiteSpace = 'nowrap';
+      btn.textContent = f;
+      filterBar.appendChild(btn);
+    });
+    el.appendChild(filterBar);
+
+    // 订单列表
+    list.forEach(o => {
+      const card = document.createElement('div');
+      card.className = 'card';
+      
+      const statusText = { pending: '待支付', issued: '已出票', cancelled: '已取消' }[o.status] || o.status;
+      const tagClass = o.status === 'issued' ? 'tag green' : o.status === 'cancelled' ? 'tag red' : 'tag gray';
+      
+      card.innerHTML = `
+        <div class="card-title">
+          <span style="display:flex;align-items:center;gap:6px;color:${o.color}">
+            ${icon(o.icon, 18)} ${o.sourceName}
+          </span>
+          <span class="${tagClass}">${statusText}</span>
+        </div>
+        <div class="card-sub">
+          <div style="font-weight:600;color:var(--text-main);margin-bottom:4px;">${o.title}</div>
+          ${o.subtitle}<br>
+          ${o.meta ? o.meta + '<br>' : ''}
+          乘客：${o.passenger.name} ${o.passenger.phone}
+        </div>
+        <div class="divider"></div>
+        <div class="row">
+          <span class="muted">订单号 ${o.id}</span>
+          <span class="price">¥${o.amount}</span>
+        </div>
+      `;
+
+      // 取消按钮
+      if (o.status !== 'cancelled') {
+        const btnRow = document.createElement('div');
+        btnRow.className = 'btn-row';
+        btnRow.style.marginTop = '10px';
+        
+        const cancelBtn = document.createElement('button');
+        cancelBtn.className = 'btn small secondary';
+        cancelBtn.textContent = '取消订单';
+        cancelBtn.addEventListener('click', () => {
+          if (confirm('确定要取消这个订单吗？')) {
+            Orders.cancel(o.id);
+            Shell.notify('订单已取消');
+            Shell.refresh('orders');
+          }
+        });
+        btnRow.appendChild(cancelBtn);
+        card.appendChild(btnRow);
+      }
+
+      el.appendChild(card);
+    });
+
+    return el;
+  }
+};
+
+
+/* ==========================================================================
+   18. 消息 App (Messages App)
+   ========================================================================== */
+window.MessagesApp = {
+  render() {
+    const el = document.createElement('div');
+    el.className = 'app';
+    const list = Messages.list();
+
+    el.innerHTML = `<h2>消息</h2>`;
+
+    if (!list.length) {
+      el.innerHTML += `<div class="empty">${icon('message-circle', 48)}<br>暂无消息</div>`;
+      return el;
+    }
+
+    // 全部已读按钮
+    if (list.some(m => !m.read)) {
+      const btn = document.createElement('button');
+      btn.className = 'btn small secondary';
+      btn.style.marginBottom = '16px';
+      btn.textContent = '全部标为已读';
+      btn.addEventListener('click', () => {
+        Messages.markAllRead();
+        Shell.refresh('messages');
+      });
+      el.appendChild(btn);
+    }
+
+    list.forEach(m => {
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML = `
+        <div class="card-title">
+          <span>${m.title}</span>
+          ${m.read ? '' : '<span class="tag red">未读</span>'}
+        </div>
+        <div class="card-sub">${m.body}</div>
+      `;
+      el.appendChild(card);
+    });
+
+    return el;
+  }
+};
+</script>
+<script>
+/* ==========================================================================
+   19. 全局工具：模态框 (Modal)
+   ========================================================================== */
+window.openModal = function(content) {
+  const mask = document.createElement('div');
+  mask.className = 'modal-mask';
+  const box = document.createElement('div');
+  box.className = 'modal-box';
+  box.appendChild(content);
+  mask.appendChild(box);
+  mask.addEventListener('click', (e) => { if (e.target === mask) mask.remove(); });
+  document.body.appendChild(mask);
+  return mask;
+};
+
+/* ==========================================================================
+   20. 我的 App (ProfileApp)
+   包含：账户信息编辑、乘客管理（增删改查）
+   ========================================================================== */
+window.ProfileApp = {
+  render() {
+    const el = document.createElement('div');
+    el.className = 'app';
+    const user = UserProfile.get();
+    const ps = Passengers.list();
+
+    el.innerHTML = `
+      <h2>我的</h2>
+      
+      <div class="card">
+        <div class="card-title">${icon('user', 18)} 账户信息</div>
+        <div class="card-sub">昵称：${user.nickname}<br>手机号：${user.phone}</div>
+        <button class="btn small secondary" id="edit-user" style="margin-top:12px;">${icon('pencil', 14)} 编辑</button>
+      </div>
+      
+      <div class="card">
+        <div class="card-title">${icon('user-plus', 18)} 乘客管理</div>
+        <div id="psg-list"></div>
+        <button class="btn block" id="add-psg" style="margin-top:12px;">${icon('plus', 16)} 添加乘客</button>
+      </div>
+    `;
+
+    // 渲染乘客列表
+    const listEl = el.querySelector('#psg-list');
+    if (!ps.length) {
+      listEl.innerHTML = '<div class="card-sub" style="padding:10px 0;">还没有乘客，点击下方按钮添加。</div>';
+    } else {
+      ps.forEach(p => {
+        const row = document.createElement('div');
+        row.style.cssText = 'padding:12px 0;border-bottom:1px solid var(--border-color);display:flex;justify-content:space-between;align-items:center;';
+        row.innerHTML = `
+          <div>
+            <div style="font-weight:600;font-size:14px;">${p.name} <span class="tag gray">${p.type}</span></div>
+            <div class="card-sub" style="margin-top:4px;">手机：${p.phone}<br>证件：${p.idNo}</div>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn small secondary" data-edit>${icon('pencil', 14)}</button>
+            <button class="btn small secondary" data-del>${icon('trash-2', 14)}</button>
+          </div>
+        `;
+        
+        row.querySelector('[data-edit]').addEventListener('click', () => openPassengerForm(p));
+        row.querySelector('[data-del]').addEventListener('click', () => {
+          if (confirm(`确定删除乘客 ${p.name} 吗？`)) {
+            Passengers.remove(p.id);
+            Shell.notify('乘客已删除');
+            Shell.refresh('profile');
+          }
+        });
+        
+        listEl.appendChild(row);
+      });
+    }
+
+    // 添加乘客
+    el.querySelector('#add-psg').addEventListener('click', () => openPassengerForm(null));
+
+    // 编辑账户
+    el.querySelector('#edit-user').addEventListener('click', () => {
+      const box = document.createElement('div');
+      box.innerHTML = `
+        <h3>编辑账户</h3>
+        <div class="field"><label>昵称</label><input id="nick" value="${user.nickname}"></div>
+        <div class="field"><label>手机号</label><input id="phone" value="${user.phone}"></div>
+        <div class="btn-row" style="margin-top:20px;">
+          <button class="btn secondary" id="cancel">取消</button>
+          <button class="btn" id="save">保存</button>
+        </div>
+      `;
+      const mask = openModal(box);
+      box.querySelector('#cancel').addEventListener('click', () => mask.remove());
+      box.querySelector('#save').addEventListener('click', () => {
+        const nick = box.querySelector('#nick').value.trim();
+        const phone = box.querySelector('#phone').value.trim();
+        UserProfile.set({ nickname: nick || '旅行者', phone });
+        mask.remove();
+        Shell.notify('已保存');
+        Shell.refresh('profile');
+      });
+    });
+
+    return el;
+  }
+};
+
+/* 乘客表单弹窗 */
+function openPassengerForm(p) {
+  const box = document.createElement('div');
+  box.innerHTML = `
+    <h3>${p ? '编辑乘客' : '添加乘客'}</h3>
+    <div class="field"><label>姓名</label><input id="name" value="${p ? p.name : ''}" placeholder="请输入真实姓名"></div>
+    <div class="field"><label>手机号</label><input id="phone" value="${p ? p.phone : ''}" placeholder="11位手机号"></div>
+    <div class="field"><label>证件号</label><input id="idNo" value="${p ? p.idNo : ''}" placeholder="身份证/护照号"></div>
+    <div class="field">
+      <label>类型</label>
+      <select id="type">
+        <option value="成人" ${p && p.type === '成人' ? 'selected' : ''}>成人</option>
+        <option value="儿童" ${p && p.type === '儿童' ? 'selected' : ''}>儿童</option>
+        <option value="学生" ${p && p.type === '学生' ? 'selected' : ''}>学生</option>
+        <option value="老人" ${p && p.type === '老人' ? 'selected' : ''}>老人</option>
+      </select>
+    </div>
+    <div class="btn-row" style="margin-top:20px;">
+      <button class="btn secondary" id="cancel">取消</button>
+      <button class="btn" id="save">保存</button>
+    </div>
+  `;
+  const mask = openModal(box);
+  box.querySelector('#cancel').addEventListener('click', () => mask.remove());
+  box.querySelector('#save').addEventListener('click', () => {
+    const v = {
+      name: box.querySelector('#name').value.trim(),
+      phone: box.querySelector('#phone').value.trim(),
+      idNo: box.querySelector('#idNo').value.trim(),
+      type: box.querySelector('#type').value
+    };
+    if (!v.name) { Shell.notify('请填写姓名'); return; }
+    if (!v.phone) { Shell.notify('请填写手机号'); return; }
+    
+    if (p) Passengers.update(p.id, v);
+    else Passengers.add(v);
+    
+    mask.remove();
+    Shell.notify('保存成功');
+    Shell.refresh('profile');
+  });
+}
+
+/* ==========================================================================
+   21. 地图 App (MapApp)
+   根据已出票的订单生成简单的网格地图与行程点
+   ========================================================================== */
+window.MapApp = {
+  render() {
+    const el = document.createElement('div');
+    el.className = 'app';
+    const orders = Orders.list().filter(o => o.status === 'issued');
+    
+    el.innerHTML = `<h2>地图</h2>`;
+
+    // 绘制简单网格背景
+    const mapDiv = document.createElement('div');
+    mapDiv.className = 'map-grid';
+    
+    const seed = hash(orders.map(o => o.subtitle).join('') || 'default');
+    const spots = 5 + (seed % 4);
+    
+    // 随机打点
+    for (let i = 0; i < spots; i++) {
+      const pin = document.createElement('div');
+      pin.className = 'map-pin';
+      pin.style.left = (10 + ((seed + i * 37) % 80)) + '%';
+      pin.style.top = (10 + ((seed + i * 53) % 70)) + '%';
+      // 加一点动画延迟
+      pin.style.animation = `pulseGlow 2s infinite ${i * 0.2}s`;
+      mapDiv.appendChild(pin);
+    }
+    el.appendChild(mapDiv);
+
+    if (!orders.length) {
+      el.innerHTML += '<div class="empty">还没有已出票的行程，去订一张吧</div>';
+      return el;
+    }
+
+    // 行程目的地卡片
+    const card = document.createElement('div');
+    card.className = 'card';
+    
+    // 提取目的地（简单的字符串处理，取 → 后面的部分）
+    const destinations = orders.map(o => {
+      if (o.subtitle && o.subtitle.includes('→')) {
+        return o.subtitle.split('→')[1].trim();
+      }
+      return o.subtitle;
+    });
+
+    card.innerHTML = `
+      <div class="card-title">${icon('map-pin', 18)} 我的行程目的地</div>
+      <div class="chip-row" style="margin-top:12px;">
+        ${destinations.map(d => `<span class="chip">${d}</span>`).join('')}
+      </div>
+    `;
+    el.appendChild(card);
+
+    return el;
+  }
+};
+
+/* ==========================================================================
+   22. 日历 App (CalendarApp)
+   按日期分组展示已出票的行程
+   ========================================================================== */
+window.CalendarApp = {
+  render() {
+    const el = document.createElement('div');
+    el.className = 'app';
+    const list = Orders.list()
+      .filter(o => o.status === 'issued')
+      .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+
+    el.innerHTML = `<h2>日历</h2>`;
+
+    if (!list.length) {
+      el.innerHTML += '<div class="empty">暂无行程安排</div>';
+      return el;
+    }
+
+    let currentDate = '';
+    list.forEach(o => {
+      // 日期标题
+      if (o.date !== currentDate) {
+        currentDate = o.date;
+        const dateHeading = document.createElement('h3');
+        dateHeading.style.cssText = 'margin:20px 0 10px;font-size:14px;color:var(--primary);font-weight:700;display:flex;align-items:center;gap:6px;';
+        dateHeading.innerHTML = `${icon('calendar', 16)} ${currentDate || '日期未定'}`;
+        el.appendChild(dateHeading);
+      }
+
+      // 行程卡片
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.style.cssText = 'border-left:4px solid ' + o.color + '; border-radius:0 12px 12px 0;';
+      card.innerHTML = `
+        <div class="card-title" style="margin-bottom:4px;">
+          <span style="display:flex;align-items:center;gap:6px;">
+            ${icon(o.icon, 16)} ${o.sourceName}
+          </span>
+          <span class="tag gray" style="font-size:11px;">${o.meta ? o.meta.split(' ')[0] : ''}</span>
+        </div>
+        <div class="card-sub">
+          <div style="font-weight:600;color:var(--text-main);">${o.title}</div>
+          ${o.subtitle}
+        </div>
+      `;
+      el.appendChild(card);
+    });
+
+    return el;
+  }
+};
+
+/* ==========================================================================
+   23. 便签 App (NotesApp)
+   简单的文本备忘录
+   ========================================================================== */
+window.NotesApp = {
+  list() { return Store.get('notes', []); },
+  set(l) { Store.set('notes', l); maybeAutoSync(); },
+  
+  render() {
+    const el = document.createElement('div');
+    el.className = 'app';
+    
+    el.innerHTML = `
+      <h2>便签</h2>
+      <div class="field">
+        <input id="note-input" placeholder="写点什么..." style="height:48px;">
+      </div>
+      <button class="btn block" id="add-btn">${icon('plus', 18)} 添加便签</button>
+      <div id="notes-list" style="margin-top:20px;"></div>
+    `;
+
+    // 添加便签
+    el.querySelector('#add-btn').addEventListener('click', () => {
+      const input = el.querySelector('#note-input');
+      const v = input.value.trim();
+      if (!v) return;
+      
+      const list = this.list();
+      list.unshift({ id: 'n' + Date.now(), text: v, createdAt: Date.now() });
+      this.set(list);
+      input.value = '';
+      Shell.refresh('notes');
+    });
+
+    // 渲染列表
+    const list = this.list();
+    const box = el.querySelector('#notes-list');
+    
+    if (!list.length) {
+      box.innerHTML = '<div class="empty" style="padding:20px 0;">暂无便签</div>';
+      return el;
+    }
+
+    list.forEach(n => {
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.style.cssText = 'background:#fefce8;border-color:#fef08a;'; // 便签黄
+      
+      const timeStr = new Date(n.createdAt).toLocaleString('zh-CN', { hour12: false });
+      
+      card.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">
+          <div style="font-size:14px;color:#854d0e;line-height:1.5;">${n.text}</div>
+          <button class="btn small secondary" data-del style="flex-shrink:0;">${icon('trash-2', 14)}</button>
+        </div>
+        <div style="font-size:11px;color:#a16207;margin-top:8px;">${timeStr}</div>
+      `;
+      
+      card.querySelector('[data-del]').addEventListener('click', () => {
+        this.set(this.list().filter(x => x.id !== n.id));
+        Shell.refresh('notes');
+      });
+      
+      box.appendChild(card);
+    });
+
+    return el;
+  }
+};
+</script>
+<script>
+/* ==========================================================================
+   24. 设置 App (SettingsApp)
+   包含云同步（同步码设置、上传、拉取）与数据清理
+   ========================================================================== */
+window.SettingsApp = {
+  render() {
+    const el = document.createElement('div');
+    el.className = 'app';
+    
+    const currentCode = Store.get('sync_code', '');
+    const cardsCount = BankCards.list().length;
+
+    el.innerHTML = `
+      <h2>设置</h2>
+      
+      <!-- 云同步区块 -->
+      <div class="card">
+        <div class="card-title">${icon('cloud', 18)} 云同步 (Netlify Blobs)</div>
+        <div class="card-sub" style="margin-bottom:12px;">
+          设置一个 4-20 位的字母或数字作为同步码。在其他设备输入相同同步码，即可同步订单、银行卡、乘客等数据。
+        </div>
+        
+        <div class="field">
+          <label>同步码</label>
+          <input id="sync-code" type="text" value="${currentCode}" placeholder="例如: abcd1234" maxlength="20">
+        </div>
+        
+        <div class="btn-row">
+          <button class="btn" id="save-sync">${icon('check', 16)} 保存并上传</button>
+          <button class="btn secondary" id="pull-sync">${icon('refresh-cw', 16)} 从云端拉取</button>
+        </div>
+        <div id="sync-status" style="margin-top:10px;font-size:13px;color:var(--text-sub);"></div>
+      </div>
+
+      <!-- 数据总览 -->
+      <div class="card">
+        <div class="card-title">数据概览</div>
+        <div class="row"><span>订单数量</span><span>${Orders.list().length} 个</span></div>
+        <div class="row"><span>消息数量</span><span>${Messages.list().length} 条</span></div>
+        <div class="row"><span>银行卡数量</span><span>${cardsCount} 张</span></div>
+      </div>
+
+      <!-- 危险区域 -->
+      <div class="card" style="border-color:#fecaca;">
+        <div class="card-title" style="color:#dc2626;">危险区域</div>
+        <div class="card-sub" style="margin-bottom:12px;">
+          清除所有数据（订单、消息、余额、银行卡、便签等），此操作不可恢复。
+        </div>
+        <button class="btn block danger" id="clear-data">清除全部数据</button>
+      </div>
+
+      <!-- 关于 -->
+      <div class="card">
+        <div class="card-title">关于</div>
+        <div class="card-sub">
+          TravelOS 模拟操作系统<br>
+          版本：2.0 (Netlify Edition)<br>
+          本地数据保存在浏览器，跨设备同步使用 Netlify Blobs。
+        </div>
+      </div>
+    `;
+
+    const syncCodeInput = el.querySelector('#sync-code');
+    const syncStatus = el.querySelector('#sync-status');
+    const saveBtn = el.querySelector('#save-sync');
+    const pullBtn = el.querySelector('#pull-sync');
+
+    // 保存并上传
+    saveBtn.addEventListener('click', async () => {
+      const code = syncCodeInput.value.trim();
+      if (!/^[A-Za-z0-9]{4,20}$/.test(code)) {
+        Shell.notify('同步码必须是 4-20 位字母或数字');
+        return;
+      }
+      
+      saveBtn.disabled = true;
+      syncStatus.innerHTML = '正在上传...';
+      
+      try {
+        SyncEngine.setSyncCode(code);
+        await SyncEngine.pushToCloud();
+        syncStatus.innerHTML = '<span style="color:#16a34a">✓ 同步码已保存并上传至云端</span>';
+        Shell.notify('同步成功');
+      } catch (e) {
+        syncStatus.innerHTML = `<span style="color:#dc2626">✗ ${e.message}</span>`;
+        // 回滚同步码（如果上传失败，可以考虑保留，但为了严谨，这里不强制回滚）
+      } finally {
+        saveBtn.disabled = false;
+      }
+    });
+
+    // 从云端拉取
+    pullBtn.addEventListener('click', async () => {
+      const code = syncCodeInput.value.trim();
+      if (!/^[A-Za-z0-9]{4,20}$/.test(code)) {
+        Shell.notify('请输入有效的同步码');
+        return;
+      }
+      
+      if (!confirm('确定用云端数据覆盖当前本地数据吗？')) return;
+
+      pullBtn.disabled = true;
+      syncStatus.innerHTML = '正在拉取...';
+      
+      try {
+        await SyncEngine.pullFromCloud(code);
+        syncStatus.innerHTML = '<span style="color:#16a34a">✓ 数据已从云端恢复</span>';
+        Shell.notify('拉取成功');
+        
+        // 刷新当前页面和其他页面
+        setTimeout(() => {
+          Shell.refresh('settings');
+          // 如果用户开着其他App，最好也能刷新，但这里为了简单，仅刷新设置页
+        }, 500);
+      } catch (e) {
+        syncStatus.innerHTML = `<span style="color:#dc2626">✗ ${e.message}</span>`;
+      } finally {
+        pullBtn.disabled = false;
+      }
+    });
+
+    // 清除数据
+    el.querySelector('#clear-data').addEventListener('click', () => {
+      if (confirm('⚠️ 确定清除所有本地数据吗？此操作不可恢复！')) {
+        Store.clearAll();
+        Shell.notify('数据已清除');
+        // 刷新所有可能受影响的页面
+        ['settings', 'orders', 'wallet', 'messages', 'profile'].forEach(id => Shell.refresh(id));
+      }
+    });
+
+    return el;
+  }
+};
+
+
+/* ==========================================================================
+   25. App 注册表 (APPS Registry)
+   定义桌面上所有可用的 App，包含名称、图标、颜色和渲染函数。
+   ========================================================================== */
+window.APPS = [
+  { 
+    id: 'train', 
+    title: 'RailWayPass', 
+    icon: 'train-front', 
+    color: '#2563eb', 
+    render: () => RailWayPassApp.render() 
+  },
+  { 
+    id: 'flight', 
+    title: 'FLYTrip', 
+    icon: 'plane', 
+    color: '#0891b2', 
+    render: () => FLYTripApp.render() 
+  },
+  { 
+    id: 'hotel', 
+    title: 'Booking.com', 
+    icon: 'hotel', 
+    color: '#9333ea', 
+    render: () => BookingApp.render() 
+  },
+  { 
+    id: 'ticket', 
+    title: '门票', 
+    icon: 'ticket', 
+    color: '#ea580c', 
+    render: () => TicketApp.render() 
+  },
+  { 
+    id: 'show', 
+    title: '演出', 
+    icon: 'music', 
+    color: '#db2777', 
+    render: () => ShowApp.render() 
+  },
+  { 
+    id: 'orders', 
+    title: '订单中心', 
+    icon: 'clipboard-list', 
+    color: '#0f172a', 
+    render: () => OrdersApp.render() 
+  },
+  { 
+    id: 'wallet', 
+    title: 'WalletOS', 
+    icon: 'wallet', 
+    color: '#16a34a', 
+    render: () => WalletApp.render() 
+  },
+  { 
+    id: 'messages', 
+    title: '消息', 
+    icon: 'message-circle', 
+    color: '#0891b2', 
+    render: () => MessagesApp.render() 
+  },
+  { 
+    id: 'profile', 
+    title: '我的', 
+    icon: 'user', 
+    color: '#64748b', 
+    render: () => ProfileApp.render() 
+  },
+  { 
+    id: 'map', 
+    title: '地图', 
+    icon: 'map', 
+    color: '#16a34a', 
+    render: () => MapApp.render() 
+  },
+  { 
+    id: 'calendar', 
+    title: '日历', 
+    icon: 'calendar', 
+    color: '#dc2626', 
+    render: () => CalendarApp.render() 
+  },
+  { 
+    id: 'notes', 
+    title: '便签', 
+    icon: 'notebook-pen', 
+    color: '#eab308', 
+    render: () => NotesApp.render() 
+  },
+  { 
+    id: 'settings', 
+    title: '设置', 
+    icon: 'settings', 
+    color: '#475569', 
+    render: () => SettingsApp.render() 
+  }
+];
+</script>
+<script>
+/* ==========================================================================
+   26. 桌面端外壳 (DesktopShell)
+   负责桌面图标渲染、任务栏、开始菜单、系统托盘
+   ========================================================================== */
+window.DesktopShell = {
+  wm: null,
+
+  init() {
+    // 初始化窗口管理器
+    const layer = document.getElementById('window-layer');
+    const launchOverlay = document.getElementById('launch-overlay');
+    this.wm = new WindowManager(layer, launchOverlay);
+
+    // 窗口状态变化时，刷新任务栏
+    this.wm.onStateChange = () => this.renderTaskbar();
+
+    // 初始化桌面各区块
+    this.renderDesktopIcons();
+    this.renderTaskbar();
+    this.renderTray();
+    this.bindStartMenu();
+  },
+
+  /* ---------- 1. 桌面图标 ---------- */
+  renderDesktopIcons() {
+    const box = document.getElementById('desktop-icons');
+    box.innerHTML = '';
+    
+    APPS.forEach(app => {
+      const el = document.createElement('div');
+      el.className = 'desktop-icon';
+      el.innerHTML = `
+        <div class="app-icon" style="color:${app.color}">${icon(app.icon, 48)}</div>
+        <span class="label">${app.title}</span>
+      `;
+      // 双击打开
+      el.addEventListener('dblclick', () => Shell.openApp(app.id));
+      box.appendChild(el);
+    });
+  },
+
+  /* ---------- 2. 任务栏 ---------- */
+  renderTaskbar() {
+    const box = document.getElementById('taskbar-apps');
+    if (!box) return;
+    box.innerHTML = '';
+
+    // 遍历当前打开的窗口
+    this.wm.windows.forEach((w, id) => {
+      const btn = document.createElement('button');
+      btn.className = 'taskbar-app';
+      btn.innerHTML = `<span style="color:${w.app.color};display:flex;align-items:center;">${icon(w.app.icon, 16)}</span><span>${w.app.title}</span>`;
+      
+      btn.addEventListener('click', () => {
+        // 如果窗口最小化了，点击恢复；否则聚焦
+        if (w.el.classList.contains('minimized')) {
+          this.wm.focus(id);
+        } else {
+          // 如果已经聚焦，点击最小化（类似 Windows 行为）
+          if (parseInt(w.el.style.zIndex) === this.wm.zIndexCounter) {
+            this.wm.minimize(id);
+          } else {
+            this.wm.focus(id);
+          }
+        }
+      });
+      
+      box.appendChild(btn);
+    });
+  },
+
+  /* ---------- 3. 系统托盘（时间、电量） ---------- */
+  renderTray() {
+    const tray = document.getElementById('tray');
+    if (!tray) return;
+
+    const tick = () => {
+      const d = new Date();
+      const hh = String(d.getHours()).padStart(2, '0');
+      const mm = String(d.getMinutes()).padStart(2, '0');
+      tray.innerHTML = `
+        ${icon('wifi', 16)} 
+        ${icon('battery-full', 16)} 
+        <span style="font-weight:500;">${hh}:${mm}</span>
+      `;
+    };
+    
+    tick();
+    setInterval(tick, 30000); // 每30秒更新一次
+  },
+
+  /* ---------- 4. 开始菜单 ---------- */
+  bindStartMenu() {
+    const btn = document.getElementById('start-btn');
+    const menu = document.getElementById('start-menu');
+    if (!btn || !menu) return;
+
+    btn.innerHTML = icon('grid', 22);
+
+    // 渲染菜单内容
+    menu.innerHTML = `
+      <h4>所有应用</h4>
+      <div class="start-menu-grid"></div>
+    `;
+    const grid = menu.querySelector('.start-menu-grid');
+
+    APPS.forEach(app => {
+      const item = document.createElement('div');
+      item.className = 'start-menu-item';
+      item.innerHTML = `
+        <span style="color:${app.color}">${icon(app.icon, 28)}</span>
+        <span>${app.title}</span>
+      `;
+      item.addEventListener('click', () => {
+        menu.classList.remove('open');
+        Shell.openApp(app.id);
+      });
+      grid.appendChild(item);
+    });
+
+    // 点击按钮切换菜单
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      menu.classList.toggle('open');
+    });
+
+    // 点击外部关闭菜单
+    document.addEventListener('click', (e) => {
+      if (!menu.contains(e.target) && e.target !== btn) {
+        menu.classList.remove('open');
+      }
+    });
+  },
+
+  /* ---------- 5. Shell 接口实现 ---------- */
+  
+  // 打开 App（包含启动动画）
+  openApp(id) {
+    const app = APPS.find(a => a.id === id);
+    if (!app) return;
+    
+    // 如果开始菜单开着，先关掉
+    const menu = document.getElementById('start-menu');
+    if (menu) menu.classList.remove('open');
+    
+    this.wm.open(app);
+  },
+
+  // 关闭 App
+  closeApp(id) {
+    this.wm.close(id);
+  },
+
+  // 返回（桌面端无此概念）
+  goBack() {},
+
+  // 判断是否在运行
+  isRunning(id) {
+    return this.wm.windows.has(id);
+  },
+
+  // 刷新 App 内容
+  refresh(id) {
+    this.wm.refresh(id);
+  },
+
+  // 弹出通知 Toast
+  notify(msg) {
+    const layer = document.getElementById('toast-layer');
+    if (!layer) return;
+
+    const t = document.createElement('div');
+    t.className = 'toast';
+    t.innerHTML = `${icon('check', 18)} <span>${msg}</span>`;
+    layer.appendChild(t);
+    
+    // 3秒后移除
+    setTimeout(() => {
+      t.style.opacity = '0';
+      t.style.transform = 'translateY(-20px)';
+      setTimeout(() => t.remove(), 300);
+    }, 3000);
+  }
+};
+</script>
+<script>
+/* ==========================================================================
+   27. 手机端外壳 (MobileShell)
+   负责手机状态栏、桌面图标网格、底部 Dock、页面栈管理
+   ========================================================================== */
+window.MobileShell = {
+  ps: null,
+
+  init() {
+    // 初始化页面栈
+    const container = document.getElementById('page-stack');
+    this.ps = new PageStack(container);
+
+    // 初始化 UI 组件
+    this.renderIcons();
+    this.renderDock();
+    this.startClock();
+    this.renderStatusIcons();
+  },
+
+  /* ---------- 1. 桌面图标网格 ---------- */
+  renderIcons() {
+    const box = document.getElementById('mobile-icons');
+    if (!box) return;
+    box.innerHTML = '';
+
+    APPS.forEach(app => {
+      // 如果不想让某些 App 出现在手机桌面（比如设置），可以在这里过滤
+      // 这里为了完整演示，全部展示
+      const el = document.createElement('div');
+      el.className = 'mobile-icon';
+      el.innerHTML = `
+        <div class="app-icon" style="color:${app.color}">${icon(app.icon, 52)}</div>
+        <span class="label">${app.title}</span>
+      `;
+      
+      // 点击图标直接推入页面栈
+      el.addEventListener('click', () => Shell.openApp(app.id));
+      box.appendChild(el);
+    });
+  },
+
+  /* ---------- 2. 底部 Dock ---------- */
+  renderDock() {
+    const dock = document.getElementById('mobile-dock');
+    if (!dock) return;
+    dock.innerHTML = '';
+
+    // 选取 4 个常用 App 放入 Dock
+    const dockIds = ['train', 'wallet', 'orders', 'profile'];
+    
+    dockIds.forEach(id => {
+      const app = APPS.find(a => a.id === id);
+      if (!app) return;
+
+      const el = document.createElement('div');
+      el.className = 'mobile-icon';
+      el.innerHTML = `
+        <div class="app-icon" style="color:${app.color}">${icon(app.icon, 42)}</div>
+        <span class="label">${app.title}</span>
+      `;
+      el.addEventListener('click', () => Shell.openApp(id));
+      dock.appendChild(el);
+    });
+  },
+
+  /* ---------- 3. 状态栏时间 ---------- */
+  startClock() {
+    const el = document.getElementById('mobile-time');
+    if (!el) return;
+
+    const tick = () => {
+      const d = new Date();
+      const hh = String(d.getHours()).padStart(2, '0');
+      const mm = String(d.getMinutes()).padStart(2, '0');
+      el.textContent = `${hh}:${mm}`;
+    };
+    
+    tick();
+    setInterval(tick, 30000);
+  },
+
+  /* ---------- 4. 状态栏图标（WiFi、电量） ---------- */
+  renderStatusIcons() {
+    const el = document.getElementById('mobile-status-icons');
+    if (!el) return;
+    el.innerHTML = `
+      ${icon('wifi', 18)}
+      ${icon('battery-full', 18)}
+    `;
+  },
+
+  /* ---------- 5. Shell 接口实现 ---------- */
+  
+  // 打开 App（推入页面栈）
+  openApp(id) {
+    const app = APPS.find(a => a.id === id);
+    if (!app) return;
+    
+    this.ps.push(app);
+  },
+
+  // 关闭 App
+  closeApp(id) {
+    this.ps.close(id);
+  },
+
+  // 返回上一页（弹出栈顶）
+  goBack() {
+    this.ps.goBack();
+  },
+
+  // 判断 App 是否在栈中
+  isRunning(id) {
+    return this.ps.isRunning(id);
+  },
+
+  // 刷新 App 内容
+  refresh(id) {
+    this.ps.refresh(id);
+  },
+
+  // 弹出通知 Toast
+  notify(msg) {
+    const layer = document.getElementById('toast-layer');
+    if (!layer) return;
+
+    const t = document.createElement('div');
+    t.className = 'toast';
+    t.innerHTML = `<span>${msg}</span>`;
+    layer.appendChild(t);
+    
+    // 2.6秒后移除
+    setTimeout(() => {
+      t.style.opacity = '0';
+      t.style.transform = 'translateY(-20px)';
+      setTimeout(() => t.remove(), 300);
+    }, 2600);
+  }
+};
+</script>
+<script>
+/* ==========================================================================
+   28. 启动引导 (Bootstrapper)
+   负责：注入图标库、初始化双端外壳、绑定设备切换、处理启动逻辑
+   ========================================================================== */
+(function boot() {
+  // 1. 注入 SVG 图标符号
+  injectIconSprite();
+
+  // 2. 初始化双端外壳
+  // 无论当前是什么设备，都先初始化好，方便随时切换
+  DesktopShell.init();
+  MobileShell.init();
+
+  // 3. 根据当前设备模式，激活对应的 Shell 实现
+  const isMobile = Device.mode === 'mobile';
+  Shell.use(isMobile ? MobileShell : DesktopShell);
+
+  // 4. 绑定设备切换按钮（演示用）
+  const toggleBtn = document.getElementById('device-toggle');
+  if (toggleBtn) {
+    // 更新按钮图标
+    const updateToggleIcon = () => {
+      const currentMode = Device.mode;
+      toggleBtn.innerHTML = icon(currentMode === 'mobile' ? 'monitor' : 'smartphone', 22);
+      toggleBtn.title = currentMode === 'mobile' ? '切换到电脑视图' : '切换到手机视图';
+    };
+    
+    updateToggleIcon();
+    
+    // 点击切换
+    toggleBtn.addEventListener('click', () => {
+      Device.toggle();
+    });
+
+    // 监听设备切换事件（Device.toggle 内部会派发）
+    window.addEventListener('devicechange', (e) => {
+      const newMode = e.detail; // 'mobile' 或 'desktop'
+      
+      // 更新 Shell 实现
+      Shell.use(newMode === 'mobile' ? MobileShell : DesktopShell);
+      
+      // 更新按钮图标
+      updateToggleIcon();
+      
+      // 提示用户
+      Shell.notify(`已切换至${newMode === 'mobile' ? '手机' : '电脑'}视图`);
+    });
+  }
+
+  // 5. 监听窗口大小变化，处理桌面端窗口越界问题
+  let resizeTimer;
+  window.addEventListener('resize', () => {
+    if (Device.mode !== 'desktop') return;
+    
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+      if (!DesktopShell.wm) return;
+      
+      DesktopShell.wm.windows.forEach((w, id) => {
+        const el = w.el;
+        if (!el || el.classList.contains('maximized')) return;
+        
+        // 防止窗口拖出屏幕
+        const rect = el.getBoundingClientRect();
+        let changed = false;
+        
+        if (rect.left > window.innerWidth - 200) {
+          el.style.left = `${Math.max(0, window.innerWidth - 400)}px`;
+          changed = true;
+        }
+        if (rect.top > window.innerHeight - 100) {
+          el.style.top = `${Math.max(0, window.innerHeight - 300)}px`;
+          changed = true;
+        }
+        
+        if (changed) {
+          // 如果发生位置修正，可以在这里做点啥，目前不需要
+        }
+      });
+    }, 200);
+  });
+
+  // 6. 打印欢迎信息
+  console.log(
+    '%cTravelOS v2.0 %c\n' +
+    '欢迎使用模拟操作系统！\n' +
+    '当前设备模式: ' + Device.mode + '\n' +
+    '云同步状态: ' + (Store.get('sync_code') ? '已配置' : '未配置') + '\n' +
+    '数据存储: LocalStorage + Netlify Blobs',
+    'color:#2563eb;font-size:16px;font-weight:bold;',
+    'color:#64748b;font-size:12px;'
+  );
+
+  // 7. 如果之前配置过同步码，尝试静默同步一下
+  // 注意：如果是第一次打开，localStorage 里没有同步码，不会触发
+  if (Store.get('sync_code')) {
+    setTimeout(async () => {
+      try {
+        await SyncEngine.autoSync();
+        console.log('[Boot] 启动时自动同步完成');
+      } catch (e) {
+        console.warn('[Boot] 启动自动同步失败:', e.message);
+      }
+    }, 1500); // 延迟 1.5 秒，避免阻塞首屏渲染
+  }
+
+})();
+</script>
